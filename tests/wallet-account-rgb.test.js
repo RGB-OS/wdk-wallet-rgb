@@ -22,6 +22,8 @@ const createMockWallet = () => ({
   signPsbt: jest.fn().mockImplementation(psbt => `signed:${psbt}`),
   sendEnd: jest.fn().mockResolvedValue({ txid: 'abc123', fee: 210 }),
   send: jest.fn().mockResolvedValue({ txid: 'abc123', fee: 210 }),
+  signMessage: jest.fn().mockResolvedValue('signed-message'),
+  verifyMessage: jest.fn().mockResolvedValue(true),
   blindReceive: jest.fn().mockResolvedValue({ invoice: 'rgb1-invoice' }),
   witnessReceive: jest.fn().mockResolvedValue({ invoice: 'rgb1-witness' }),
   issueAssetNia: jest.fn().mockResolvedValue({ assetId: 'asset-new' }),
@@ -30,8 +32,6 @@ const createMockWallet = () => ({
   listUnspents: jest.fn().mockResolvedValue([{ txid: 'utxo-1' }]),
   listTransactions: jest.fn().mockResolvedValue([{ txid: 'tx-1' }]),
   refreshWallet: jest.fn().mockResolvedValue(undefined),
-  sign: jest.fn().mockResolvedValue('mock-signature'),
-  verify: jest.fn().mockResolvedValue(true),
   createBackup: jest.fn().mockResolvedValue({ id: 'backup-123' }),
   downloadBackup: jest.fn().mockResolvedValue(Buffer.from('backup')),
   restoreFromBackup: jest.fn().mockResolvedValue({ restored: true })
@@ -154,7 +154,7 @@ describe('WalletAccountRgb', () => {
 
     test('transfer performs RGB send flow', async () => {
       const { account, wallet } = await createAccount()
-      const result = await account.transfer({ asset_id: 'asset-1', to: 'rgb1-invoice', value: 100 })
+      const result = await account.transfer({ assetId: 'asset-1', to: 'rgb1-invoice', value: 100 })
 
       expect(wallet.sendBegin).toHaveBeenCalledWith({
         invoice: 'rgb1-invoice',
@@ -213,6 +213,20 @@ describe('WalletAccountRgb', () => {
       expect(wallet.blindReceive).not.toHaveBeenCalledWith(expect.objectContaining({ witness: true }))
     })
 
+    test('sign delegates to wallet manager', async () => {
+      const { account, wallet } = await createAccount()
+      const signature = await account.sign('hello rgb')
+      expect(signature).toBe('signed-message')
+      expect(wallet.signMessage).toHaveBeenCalledWith('hello rgb')
+    })
+
+    test('verify delegates to wallet manager', async () => {
+      const { account, wallet } = await createAccount()
+      const isValid = await account.verify('hello rgb', 'signed-message')
+      expect(isValid).toBe(true)
+      expect(wallet.verifyMessage).toHaveBeenCalledWith('hello rgb', 'signed-message')
+    })
+
     test('createBackup delegates to wallet manager', async () => {
       const { account, wallet } = await createAccount()
       const result = await account.createBackup('secure-password')
@@ -241,26 +255,6 @@ describe('WalletAccountRgb', () => {
       const result = await account.restoreFromBackup(params)
       expect(result).toEqual({ restored: true })
       expect(wallet.restoreFromBackup).toHaveBeenCalledWith(params)
-    })
-
-    test('sign delegates to wallet manager', async () => {
-      const { account, wallet } = await createAccount()
-      wallet.sign = jest.fn().mockResolvedValue('signed-message')
-
-      const signature = await account.sign('hello world')
-
-      expect(signature).toBe('signed-message')
-      expect(wallet.sign).toHaveBeenCalledWith('hello world')
-    })
-
-    test('verify delegates to wallet manager', async () => {
-      const { account, wallet } = await createAccount()
-      wallet.verify = jest.fn().mockResolvedValue(true)
-
-      const result = await account.verify('hello world', 'signature')
-
-      expect(result).toBe(true)
-      expect(wallet.verify).toHaveBeenCalledWith('hello world', 'signature')
     })
   })
 

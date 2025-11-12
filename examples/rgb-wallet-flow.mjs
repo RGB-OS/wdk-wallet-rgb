@@ -34,6 +34,17 @@ export async function initWallet ({ mnemonic } = {}) {
 
   const account = await walletManager.getAccount()
 
+  const demoMessage = 'RGB demo message'
+  const signature = await account.sign(demoMessage)
+  console.log('Signature:', signature)
+  const isValid = await account.verify(demoMessage, signature)
+  console.log('Signature valid:', isValid)
+  const isInvalid = await account.verify(demoMessage+"1", signature)
+  console.log('Signature valid:', isInvalid)
+
+
+  return account
+
   console.log('Wallet initialised for path:', account.path)
 
   const address = await account.getAddress()
@@ -48,11 +59,7 @@ export async function initWallet ({ mnemonic } = {}) {
 
   console.log('KeyPair:', account.keyPair)
 
-  const message = 'RGB demo message'
-  const signature = await account.sign(message)
-  console.log('Signature:', signature)
-  const verified = await account.verify(message, signature)
-  console.log('Signature verified:', verified)
+
 
   return { account, keys }
 }
