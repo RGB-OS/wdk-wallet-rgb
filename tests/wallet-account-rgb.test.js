@@ -30,6 +30,8 @@ const createMockWallet = () => ({
   listUnspents: jest.fn().mockResolvedValue([{ txid: 'utxo-1' }]),
   listTransactions: jest.fn().mockResolvedValue([{ txid: 'tx-1' }]),
   refreshWallet: jest.fn().mockResolvedValue(undefined),
+  sign: jest.fn().mockResolvedValue('mock-signature'),
+  verify: jest.fn().mockResolvedValue(true),
   createBackup: jest.fn().mockResolvedValue({ id: 'backup-123' }),
   downloadBackup: jest.fn().mockResolvedValue(Buffer.from('backup')),
   restoreFromBackup: jest.fn().mockResolvedValue({ restored: true })
@@ -239,6 +241,26 @@ describe('WalletAccountRgb', () => {
       const result = await account.restoreFromBackup(params)
       expect(result).toEqual({ restored: true })
       expect(wallet.restoreFromBackup).toHaveBeenCalledWith(params)
+    })
+
+    test('sign delegates to wallet manager', async () => {
+      const { account, wallet } = await createAccount()
+      wallet.sign = jest.fn().mockResolvedValue('signed-message')
+
+      const signature = await account.sign('hello world')
+
+      expect(signature).toBe('signed-message')
+      expect(wallet.sign).toHaveBeenCalledWith('hello world')
+    })
+
+    test('verify delegates to wallet manager', async () => {
+      const { account, wallet } = await createAccount()
+      wallet.verify = jest.fn().mockResolvedValue(true)
+
+      const result = await account.verify('hello world', 'signature')
+
+      expect(result).toBe(true)
+      expect(wallet.verify).toHaveBeenCalledWith('hello world', 'signature')
     })
   })
 

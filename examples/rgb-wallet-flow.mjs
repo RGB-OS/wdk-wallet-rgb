@@ -48,6 +48,12 @@ export async function initWallet ({ mnemonic } = {}) {
 
   console.log('KeyPair:', account.keyPair)
 
+  const message = 'RGB demo message'
+  const signature = await account.sign(message)
+  console.log('Signature:', signature)
+  const verified = await account.verify(message, signature)
+  console.log('Signature verified:', verified)
+
   return { account, keys }
 }
 

@@ -27,7 +27,7 @@ export default class WalletManagerRgb extends WalletManager {
    * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
    * @param {RgbWalletConfig} [config] - The configuration object.
    */
-  constructor (seed, config = {}) {
+  constructor(seed, config = {}) {
     super(seed, config)
 
     /** @private */
@@ -42,7 +42,7 @@ export default class WalletManagerRgb extends WalletManager {
    * Initializes the wallet keys from the seed phrase
    * @private
    */
-  async _initializeKeys () {
+  async _initializeKeys() {
     if (this._keys) {
       return this._keys
     }
@@ -62,7 +62,7 @@ export default class WalletManagerRgb extends WalletManager {
    * const account = await wallet.getAccount();
    * @returns {Promise<WalletAccountRgb>} The account.
    */
-  async getAccount () {
+  async getAccount() {
     const index = 0 //
     if (!this._accounts[index]) {
       await this._initializeKeys()
@@ -92,7 +92,7 @@ export default class WalletManagerRgb extends WalletManager {
    * }} restoreConfig - Restore configuration containing backup details.
    * @returns {Promise<WalletAccountRgb>} The restored account.
    */
-  async restoreAccountFromBackup (restoreConfig = {}) {
+  async restoreAccountFromBackup(restoreConfig = {}) {
     const index = 0
     const { default: WalletAccountRgb } = await import('./wallet-account-rgb.js')
 
@@ -123,8 +123,8 @@ export default class WalletManagerRgb extends WalletManager {
    * @param {string} path - The derivation path (e.g. "0'/0/0").
    * @returns {Promise<WalletAccountRgb>} The account.
    */
-  async getAccountByPath (path) {
-    throw new Error('Method not supported on the RGB blockchain.')
+  async getAccountByPath(path) {
+    throw new Error('Method not supported on the RGB')
   }
 
   /**
@@ -132,9 +132,14 @@ export default class WalletManagerRgb extends WalletManager {
    *
    * @returns {Promise<FeeRates>} The fee rates (in satoshis).
    */
-  async getFeeRates () {
-    // RGB transactions use Bitcoin network fees
-    // Return reasonable defaults
-    return { normal: 1n, fast: 2n }
+  async getFeeRates() {
+    const response = await fetch(`${MEMPOOL_SPACE_URL}/api/v1/fees/recommended`)
+
+    const { fastestFee, hourFee } = await response.json()
+
+    return {
+      normal: BigInt(hourFee),
+      fast: BigInt(fastestFee)
+    }
   }
 }

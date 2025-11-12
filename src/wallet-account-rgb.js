@@ -209,9 +209,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @returns {Promise<string>} The message's signature.
    */
   async sign (message) {
-    // RGB SDK handles all signing internally via PSBT
-    // Bitcoin message signing is not directly supported by rgb-sdk
-    throw new Error('Message signing not supported. RGB SDK handles PSBT signing internally. For Bitcoin message signing, implement separately or use rgb-sdk WalletManager directly.')
+    return await this._wallet.signMessage(message)
   }
 
   /**
@@ -222,8 +220,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @returns {Promise<boolean>} True if the signature is valid.
    */
   async verify (message, signature) {
-    // TODO: Implement Bitcoin message verification
-    throw new Error('Message verification requires Bitcoin message verification implementation. Use rgb-sdk directly for now.')
+    return await this._wallet.verifyMessage(message, signature)
   }
 
   /**
@@ -257,7 +254,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @returns {Promise<TransferResult>} The transfer's result.
    */
   async transfer (options) {
-    if (!options.asset_id && !options.to) {
+    if (!options.assetId && !options.to) {
       throw new Error('assetId and to (invoice) are required for RGB asset transfers')
     }
 
@@ -475,7 +472,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @param {number} [options.num] - Number of UTXOs to create.
    * @param {number} [options.size] - Size of each UTXO in satoshis.
    * @param {number} [options.fee_rate] - Fee rate in sat/vbyte (default: 1).
-   * @returns {Promise<string>} The PSBT (base64 encoded).
+   * @returns {Promise<number>} number of UTXOs created.
    */
   async createUtxos (options) {
     return await this._wallet.createUtxos(options)
