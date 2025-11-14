@@ -39,11 +39,10 @@ export async function initWallet ({ mnemonic } = {}) {
   console.log('Signature:', signature)
   const isValid = await account.verify(demoMessage, signature)
   console.log('Signature valid:', isValid)
-  const isInvalid = await account.verify(demoMessage+"1", signature)
+  const isInvalid = await account.verify(demoMessage + '1', signature)
   console.log('Signature valid:', isInvalid)
 
-
-  return account
+  // return account
 
   console.log('Wallet initialised for path:', account.path)
 
@@ -58,8 +57,6 @@ export async function initWallet ({ mnemonic } = {}) {
   console.log('Balance:', balance)
 
   console.log('KeyPair:', account.keyPair)
-
-
 
   return { account, keys }
 }
@@ -93,6 +90,69 @@ export async function fullExample () {
 
   const { account: receiverAccount } = await initWallet({})
   const receiverUtxos = await receiverAccount.createUtxos({ num: 5 })
+
+  /// start send
+  const btcAddress = await receiverAccount.getAddress()
+  console.log('BTC address:', btcAddress)
+  await receiverAccount.syncWallet()
+  const btcBalance2 = await receiverAccount.getBalance()
+  console.log('BTC balance:', btcBalance2)
+
+  // Quote send transaction before sending
+  console.log('\nQuoting send transaction...')
+  const sendQuote = await senderAccount.quoteSendTransaction({
+    to: btcAddress,
+    value: 7000
+  })
+  console.log('Send transaction quote:', sendQuote)
+
+  // Send BTC to the address
+  const result = await senderAccount.sendTransaction({
+    to: btcAddress,
+    value: 7000,
+    feeRate: 1
+  })
+
+  console.log('Send BTC result:', result)
+
+  mine(10)
+  // Wait for confirmation
+  await new Promise(resolve => setTimeout(resolve, 2000))
+  await receiverAccount.syncWallet()
+  await senderAccount.syncWallet()
+  const btcBalance = await receiverAccount.getBalance()
+  console.log('BTC balance:', btcBalance)
+
+  console.log('\nTransactions after BTC send:')
+  const transactionsAfterBtc = await senderAccount.listTransactions()
+  console.log(JSON.stringify(transactionsAfterBtc, null, 2))
+
+  // Get transaction receipt
+  if (result.hash) {
+    console.log('\nGetting transaction receipt...')
+    const txReceipt = await senderAccount.getTransactionReceipt(result.hash)
+    console.log('Transaction receipt:', JSON.stringify(txReceipt, null, 2))
+  }
+  // finsh send
+
+  // Another send transaction example - get address first
+  console.log('\nGetting address for another send transaction...')
+  const recipientAddress = await receiverAccount.getAddress()
+  console.log('Recipient address:', recipientAddress)
+
+  console.log('\nSending BTC transaction to recipient...')
+  const sendResult2 = await senderAccount.sendTransaction({
+    to: recipientAddress,
+    value: 5000,
+    feeRate: 1
+  })
+  console.log('Send transaction result:', sendResult2)
+
+  await mine(3)
+  await new Promise(resolve => setTimeout(resolve, 2000))
+  await receiverAccount.syncWallet()
+  await senderAccount.syncWallet()
+
   console.log('UTXOs:', receiverUtxos)
   console.log('\nCreating blind receive invoice...')
   const invoice = await receiverAccount.receiveAsset({
@@ -100,18 +160,35 @@ export async function fullExample () {
   })
   console.log('Invoice:', invoice)
 
-  console.log('\nSending asset...')
-  const sendResult = await senderAccount.send({
-    asset_id: asset.asset_id,
-    amount: 10,
-    invoice: invoice.invoice,
-    min_confirmations: 1
+  // Quote transfer before sending
+  console.log('\nQuoting transfer...')
+  const transferQuote = await senderAccount.quoteTransfer({
+    assetId: asset.asset_id,
+    to: invoice.invoice,
+    value: 10,
+    minConfirmations: 1
   })
-  console.log('Send result:', sendResult)
+  console.log('Transfer quote:', transferQuote)
+
+  console.log('\nSending asset...')
+  const sendResult = await senderAccount.transfer({
+    assetId: asset.asset_id,
+    to: invoice.invoice,
+    value: 10,
+    minConfirmations: 1
+  })
+  console.log('Transfer result:', sendResult)
   await senderAccount.refreshWallet()
   await receiverAccount.refreshWallet()
   console.log('\nMining confirmations...')
   await mine(10)
+
+  // Get transfer receipt
+  if (sendResult.hash) {
+    console.log('\nGetting transfer receipt...')
+    const transferReceipt = await receiverAccount.getTransferReceipt(sendResult.hash)
+    console.log('Transfer receipt:', JSON.stringify(transferReceipt, null, 2))
+  }
 
   console.log('\nReceiver assets:')
   console.log(await receiverAccount.listAssets())
@@ -123,17 +200,17 @@ export async function fullExample () {
   })
   console.log('Witness invoice:', witnessInvoice)
 
-  const sendWitnessResult = await senderAccount.send({
-    asset_id: asset.asset_id,
-    amount: 10,
-    invoice: witnessInvoice.invoice,
-    witness_data: {
+  const sendWitnessResult = await senderAccount.transfer({
+    assetId: asset.asset_id,
+    to: witnessInvoice.invoice,
+    value: 10,
+    witnessData: {
       amount_sat: 1000,
       blinding: null
     },
-    min_confirmations: 1
+    minConfirmations: 1
   })
-  console.log('Send witness result:', sendWitnessResult)
+  console.log('Transfer witness result:', sendWitnessResult)
   await senderAccount.refreshWallet()
   await receiverAccount.refreshWallet()
   console.log('\nMining confirmations...')
@@ -145,6 +222,14 @@ export async function fullExample () {
 
   console.log('\nReceiver transfers:')
   console.log(await receiverAccount.listTransfers(asset.asset_id))
+
+  console.log('\nSender transactions:')
+  const senderTransactions = await senderAccount.listTransactions()
+  console.log(JSON.stringify(senderTransactions, null, 2))
+
+  console.log('\nReceiver transactions:')
+  const receiverTransactions = await receiverAccount.listTransactions()
+  console.log(JSON.stringify(receiverTransactions, null, 2))
 
   console.log('\nCreating encrypted backup for sender wallet...')
   const backupPassword = 'rgb-demo-password'

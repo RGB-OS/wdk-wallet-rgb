@@ -20,6 +20,7 @@ import { WalletManager } from './libs/rgb-sdk.js'
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
+/** @typedef {import('rgb-sdk').Transaction} Transaction */
 
 /**
  * @typedef {Object} RgbTransaction
@@ -91,6 +92,7 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
   async getBalance () {
     await this._initializeWallet()
     const balance = await this._wallet.getBtcBalance()
+    console.log('BTC balance:', JSON.stringify(balance))
     return BigInt(balance.vanilla.settled || 0)
   }
 
@@ -109,35 +111,72 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
   /**
    * Quotes the costs of a send transaction operation.
    *
-   * @param {RgbTransaction} tx - The transaction.
+   * @param {Transaction} tx - The transaction.
+   * @param {string} tx.to - The transaction's recipient.
+   * @param {number} tx.value - The amount of bitcoins to send to the recipient (in satoshis).
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    */
-  async quoteSendTransaction (tx) {
-    // RGB transactions use Bitcoin network fees
-    // Return a reasonable default
-    return { fee: 1n }
+  async quoteSendTransaction ({ to, value }) {
+    const feeRate = await this._wallet.estimateFeeRate(1)
+    const psbt = await this._wallet.sendBtcBegin({
+      address: to,
+      amount: value,
+      fee_rate: Math.round(feeRate)
+    })
+    const signedPsbt = await this._wallet.signPsbt(psbt)
+    const { fee } = await this._wallet.estimateFee(signedPsbt)
+    return { fee: BigInt(fee) }
   }
 
   /**
    * Quotes the costs of a transfer operation.
    *
    * @param {TransferOptions} options - The transfer's options.
+   * @property {string} options.assetId - The RGB asset ID to transfer.
+   * @property {string} options.to - The recipient's invoice (from blindReceive).
+   * @property {number} options.value - The amount to transfer.
+   * @property {number} [options.feeRate] - The fee rate in sat/vbyte (default: 1).
+   * @property {number} [options.minConfirmations] - Minimum confirmations (default: 1).
    * @returns {Promise<Omit<TransferResult, 'hash'>>} The transfer's quotes.
+   *
    */
   async quoteTransfer (options) {
-    // RGB asset transfers use Bitcoin network fees
-    return { fee: 1n }
+    const feeRate = await this._wallet.estimateFeeRate(1)
+    const { to: invoice, assetId, value: amount, witnessData, minConfirmations } = options
+    const psbt = await this._wallet.sendBegin({
+      invoice,
+      asset_id: assetId,
+      witness_data: witnessData,
+      amount,
+      fee_rate: Math.round(feeRate),
+      min_confirmations: minConfirmations
+    })
+    const signedPsbt = await this._wallet.signPsbt(psbt)
+    const {fee} = await this._wallet.estimateFee(signedPsbt)
+    return { fee: BigInt(fee) }
   }
 
   /**
    * Returns a transaction's receipt.
    *
    * @param {string} hash - The transaction's hash.
-   * @returns {Promise<Object | null>} The receipt, or null if the transaction has not been included in a block yet.
+   * @returns {Promise<Transaction | null>} The receipt, or null if the transaction has not been created yet.
    */
   async getTransactionReceipt (hash) {
-    // RGB transactions are tracked differently
-    // This would need to be implemented based on rgb-sdk's transaction tracking
-    return null
+    const transactions = await this._wallet.listTransactions()
+    const tx = transactions.find(t => t.txid === hash)
+    return tx || null
+  }
+
+  /**
+   * Returns a transfer's receipt.
+   *
+   * @param {string} hash - The transfer's hash.
+   * @returns {Promise<RgbTransfer | null>} The receipt, or null if the transfer has not been created yet.
+   */
+  async getTransferReceipt (hash) {
+    const transfers = await this._wallet.listTransfers()
+    const transfer = transfers.find(t => t.txid === hash)
+    return transfer || null
   }
 }

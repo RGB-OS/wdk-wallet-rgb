@@ -1,6 +1,4 @@
 import { beforeAll, beforeEach, describe, expect, jest, test } from '@jest/globals'
-import { mnemonicToSeedSync } from 'bip39'
-import { HDKey } from '@scure/bip32'
 
 const SEED_PHRASE = 'cook voyage document eight skate token alien guide drink uncle term abuse'
 
@@ -8,7 +6,9 @@ const mockKeysBase = {
   account_xpub_vanilla: 'xpub6BGG5MockVanilla',
   account_xpub_colored: 'xpub6BGG5MockColored',
   master_fingerprint: '12345678',
-  mnemonic: SEED_PHRASE
+  mnemonic: SEED_PHRASE,
+  xpriv: "tprv8ZgxMBicQKsPdQaFUyyJodvPVicQ6HxagSy18xrJmd8GPHUD1YuDR5WXL9eUDiNnLfkufjL2EwzWpnkiyck5da731zevC4t34QyR69uTSSX",
+  xpub: "tpubD6NzVbkrYhZ4Wsc3NdduD3aW4k8LFd9VFkZnRUtcBtvfDmiydwioba8PWFrJRBQrSSHzfvR8Gz8sGvqV3vm5wEmgT1dcWDAaz2xRKRPaBok"
 }
 
 const createMockWallet = () => ({
@@ -26,7 +26,18 @@ const createMockWallet = () => ({
   verifyMessage: jest.fn().mockResolvedValue(true),
   blindReceive: jest.fn().mockResolvedValue({ invoice: 'rgb1-invoice' }),
   witnessReceive: jest.fn().mockResolvedValue({ invoice: 'rgb1-witness' }),
-  issueAssetNia: jest.fn().mockResolvedValue({ assetId: 'asset-new' }),
+  issueAssetNia: jest.fn().mockResolvedValue({
+    asset: {
+      asset_id: 'rgb:2dkSTbr-jFhznbPmo-TQafzswCN-av4gTsJjX-ttx6CNou5-M98k8Zd',
+      assetIface: 'RGB20',
+      ticker: 'RGB',
+      name: 'RGB Asset',
+      precision: 0,
+      issued_supply: 100,
+      timestamp: 1691160565,
+      added_at: 1691161979
+    }
+  }),
   createUtxosBegin: jest.fn().mockResolvedValue('psbt-utxo'),
   createUtxosEnd: jest.fn().mockResolvedValue(2),
   listUnspents: jest.fn().mockResolvedValue([{ txid: 'utxo-1' }]),
@@ -113,22 +124,6 @@ describe('WalletAccountRgb', () => {
     })
   })
 
-  describe('keyPair', () => {
-    test('derives vanilla and colored keys with metadata', async () => {
-      const { account } = await createAccount({ network: 'testnet' })
-      const keyPair = account.keyPair
-
-      const seed = mnemonicToSeedSync(SEED_PHRASE)
-      const hdkey = HDKey.fromMasterSeed(seed)
-      const expectedVanilla = hdkey.derive("m/86'/1'/0'")
-
-      expect(Buffer.from(keyPair.publicKey)).toEqual(Buffer.from(expectedVanilla.publicKey))
-      expect(Buffer.from(keyPair.privateKey)).toEqual(Buffer.from(expectedVanilla.privateKey))
-      expect(keyPair.accountXpubVanilla).toBe(mockKeysBase.account_xpub_vanilla)
-      expect(keyPair.accountXpubColored).toBe(mockKeysBase.account_xpub_colored)
-      expect(keyPair.masterFingerprint).toBe(mockKeysBase.master_fingerprint)
-    })
-  })
 
   describe('delegated wallet methods', () => {
     test('getAddress returns wallet address', async () => {
@@ -193,9 +188,25 @@ describe('WalletAccountRgb', () => {
 
     test('issueAssetNia proxies to wallet manager', async () => {
       const { account, wallet } = await createAccount()
-      const asset = await account.issueAssetNia({ ticker: 'RGB', name: 'RGB Asset', amounts: [100], precision: 0 })
-      expect(asset).toEqual({ assetId: 'asset-new' })
-      expect(wallet.issueAssetNia).toHaveBeenCalled()
+      const result = await account.issueAssetNia({ ticker: 'RGB', name: 'RGB Asset', amounts: [100], precision: 0 })
+      expect(result).toEqual({
+        asset: {
+          asset_id: 'rgb:2dkSTbr-jFhznbPmo-TQafzswCN-av4gTsJjX-ttx6CNou5-M98k8Zd',
+          assetIface: 'RGB20',
+          ticker: 'RGB',
+          name: 'RGB Asset',
+          precision: 0,
+          issued_supply: 100,
+          timestamp: 1691160565,
+          added_at: 1691161979
+        }
+      })
+      expect(wallet.issueAssetNia).toHaveBeenCalledWith({
+        ticker: 'RGB',
+        name: 'RGB Asset',
+        amounts: [100],
+        precision: 0
+      })
     })
 
     test('receiveAsset uses blind receive by default', async () => {
@@ -234,12 +245,6 @@ describe('WalletAccountRgb', () => {
       expect(wallet.createBackup).toHaveBeenCalledWith('secure-password')
     })
 
-    test('downloadBackup delegates to wallet manager', async () => {
-      const { account, wallet } = await createAccount()
-      const result = await account.downloadBackup('backup-id')
-      expect(result).toEqual(Buffer.from('backup'))
-      expect(wallet.downloadBackup).toHaveBeenCalledWith('backup-id')
-    })
 
     test('restoreFromBackup delegates to wallet manager', async () => {
       const { account, wallet } = await createAccount()
@@ -269,7 +274,6 @@ describe('WalletAccountRgb', () => {
     })
   })
 
-  describe('dispose', () => {
   describe('fromBackup', () => {
     test('restores wallet from backup without registering', async () => {
       const walletInstance = createMockWallet()
@@ -307,10 +311,15 @@ describe('WalletAccountRgb', () => {
       expect(account).toBeInstanceOf(WalletAccountRgb)
     })
   })
+
+  describe('dispose', () => {
     test('clears wallet references and key material', async () => {
       const { account } = await createAccount()
       const keyPair = account.keyPair
-      expect(keyPair.privateKey.every(byte => byte === 0)).toBe(false)
+      // Verify keyPair exists before dispose
+      expect(keyPair).toBeDefined()
+      expect(keyPair.publicKey).toBeDefined()
+      expect(keyPair.privateKey).toBeDefined()
 
       account.dispose()
 

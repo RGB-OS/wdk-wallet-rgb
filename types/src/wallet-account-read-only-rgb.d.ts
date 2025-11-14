@@ -37,10 +37,12 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
     /**
      * Quotes the costs of a send transaction operation.
      *
-     * @param {RgbTransaction} tx - The transaction.
+     * @param {Transaction} tx - The transaction.
+     * @param {string} tx.to - The transaction's recipient.
+     * @param {number} tx.value - The amount of bitcoins to send to the recipient (in satoshis).
      * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
      */
-    quoteSendTransaction(tx: RgbTransaction): Promise<Omit<TransactionResult, "hash">>;
+    quoteSendTransaction({ to, value }: Transaction): Promise<Omit<TransactionResult, "hash">>;
     /**
      * Returns a transaction's receipt.
      *

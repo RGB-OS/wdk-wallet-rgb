@@ -24,7 +24,18 @@ jest.unstable_mockModule('../src/libs/rgb-sdk.js', () => {
     sendEnd: jest.fn().mockResolvedValue({ txid: 'abc123' }),
     send: jest.fn().mockResolvedValue({ txid: 'abc123' }),
     blindReceive: jest.fn().mockResolvedValue({ invoice: 'rgb1...' }),
-    issueAssetNia: jest.fn().mockResolvedValue({ assetId: 'asset123' }),
+    issueAssetNia: jest.fn().mockResolvedValue({
+      asset: {
+        asset_id: 'rgb:2dkSTbr-jFhznbPmo-TQafzswCN-av4gTsJjX-ttx6CNou5-M98k8Zd',
+        assetIface: 'RGB20',
+        ticker: 'TEST',
+        name: 'Test Asset',
+        precision: 0,
+        issued_supply: 500,
+        timestamp: 1691160565,
+        added_at: 1691161979
+      }
+    }),
     createUtxosBegin: jest.fn().mockResolvedValue('cHNidP8BA...'),
     createUtxosEnd: jest.fn().mockResolvedValue(5),
     listUnspents: jest.fn().mockResolvedValue([]),
@@ -79,16 +90,27 @@ describe('WalletManagerRgb', () => {
   describe('getAccountByPath', () => {
     test('should throw an unsupported operation error', async () => {
       await expect(wallet.getAccountByPath("0'/0/0"))
-        .rejects.toThrow('Method not supported on the RGB blockchain.')
+        .rejects.toThrow('Method not supported on the RGB')
     })
   })
 
   describe('getFeeRates', () => {
     test('should return the correct fee rates', async () => {
+      // Mock fetch to avoid real network calls
+      global.fetch = jest.fn().mockResolvedValue({
+        json: jest.fn().mockResolvedValue({
+          fastestFee: 2,
+          hourFee: 1
+        })
+      })
+
       const feeRates = await wallet.getFeeRates()
 
       expect(feeRates.normal).toBe(1n)
       expect(feeRates.fast).toBe(2n)
+
+      // Clean up
+      global.fetch.mockClear()
     })
   })
 

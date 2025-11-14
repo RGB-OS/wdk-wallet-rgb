@@ -20,13 +20,22 @@ import { WalletManager } from './libs/rgb-sdk.js'
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
+/** @typedef {import('rgb-sdk').Transaction} Transaction */
+/** @typedef {import('rgb-sdk').RgbTransfer} RgbTransfer */
+/** @typedef {import('rgb-sdk').IssueAssetNIAResponse} IssueAssetNIA */
+/** @typedef {import('rgb-sdk').ListAssetsResponse} ListAssets */
+/** @typedef {import('rgb-sdk').InvoiceReceiveData} InvoiceReceiveData */
+/** @typedef {import('rgb-sdk').SendAssetEndRequestModel} SendAssetEndRequest */
+/** @typedef {import('rgb-sdk').SendResult} SendResult */
+/** @typedef {import('rgb-sdk').Unspent} Unspent */
+/** @typedef {import('rgb-sdk').RgbTransfer} RgbTransfer */
 /** @typedef {import('./wallet-account-read-only-rgb.js').RgbTransaction} RgbTransaction */
 /** @typedef {import('./wallet-account-read-only-rgb.js').RgbWalletConfig} RgbWalletConfig */
 
 /** @implements {IWalletAccount} */
 export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
   /** @package */
-  constructor(wallet, config = {}) {
+  constructor (wallet, config = {}) {
     super(undefined, config)
 
     /** @private */
@@ -44,7 +53,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @param {RgbWalletConfig} [config] - The configuration object.
    * @returns {Promise<WalletAccountRgb>} The wallet account.
    */
-  static async at(seed, config = {}) {
+  static async at (seed, config = {}) {
     const keys = config.keys
     if (!keys) {
       throw new Error('Wallet keys are required')
@@ -84,7 +93,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @param {RgbWalletConfig & { backup: Buffer | Uint8Array | ArrayBuffer | import('node:stream').Readable, password: string, filename?: string, xpub_van?: string, xpub_col?: string, master_fingerprint?: string }} config - The configuration object with backup data.
    * @returns {Promise<WalletAccountRgb>} The restored wallet account.
    */
-  static async fromBackup(seed, config = {}) {
+  static async fromBackup (seed, config = {}) {
     const keys = config.keys
     if (!keys) {
       throw new Error('Wallet keys are required')
@@ -132,7 +141,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    *
    * @type {number}
    */
-  get index() {
+  get index () {
     return this._index
   }
 
@@ -146,7 +155,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    *
    * @type {string}
    */
-  get path() {
+  get path () {
     // RGB SDK uses BIP-86 (Taproot) derivation: m/86'/coinType'/0'
     // For WDK interface compatibility, return a path representation
     // The actual derivation is handled by rgb-sdk internally
@@ -161,7 +170,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    *
    * @type {string}
    */
-  get coloredPath() {
+  get coloredPath () {
     const network = this._config.network || 'regtest'
     const isMainnet = network === 'mainnet'
     const coinType = isMainnet ? 827166 : 827167
@@ -176,7 +185,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    *
    * @type {KeyPair & { accountXpubVanilla?: string, accountXpubColored?: string, masterFingerprint?: string}}
    */
-  get keyPair() {
+  get keyPair () {
     if (this._keyPair) {
       return this._keyPair
     }
@@ -198,7 +207,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    *
    * @returns {Promise<string>} The account's address.
    */
-  async getAddress() {
+  async getAddress () {
     return await this._wallet.getAddress()
   }
 
@@ -208,7 +217,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @param {string} message - The message to sign.
    * @returns {Promise<string>} The message's signature.
    */
-  async sign(message) {
+  async sign (message) {
     return await this._wallet.signMessage(message)
   }
 
@@ -219,7 +228,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @param {string} signature - The signature to verify.
    * @returns {Promise<boolean>} True if the signature is valid.
    */
-  async verify(message, signature) {
+  async verify (message, signature) {
     return await this._wallet.verifyMessage(message, signature)
   }
 
@@ -234,16 +243,19 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @param {number} [tx.feeRate] - Fee rate in sat/vbyte (default: 1).
    * @returns {Promise<TransactionResult>} The transaction's result.
    */
-  async sendTransaction({ to, value, feeRate = 3 }) {
+  async sendTransaction ({ to, value ,feeRate}) {
     try {
-      const psbt = await this.wallet.sendBtcBegin({
+      const psbt = await this._wallet.sendBtcBegin({
         address: to,
         amount: value,
         fee_rate: feeRate
       })
       const signedPsbt = await this.signPsbt(psbt)
-      const result = await this.wallet.sendBtcEnd({ signed_psbt: signedPsbt })
-      return result
+      const result = await this._wallet.sendBtcEnd({ signed_psbt: signedPsbt })
+      return {
+        hash: result || 'unknown',
+        fee: BigInt(0)
+      }
     } catch (error) {
       throw new Error(`RGB transfer failed: ${error.message}`)
     }
@@ -257,11 +269,14 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @property {string} options.assetId - The RGB asset ID to transfer.
    * @property {string} options.to - The recipient's invoice (from blindReceive).
    * @property {number} options.value - The amount to transfer.
+   * @property {Object} [options.witnessData] - The witness data.
+   * @property {number} [options.witnessData.amount_sat] - The amount in satoshis.
+   * @property {number} [options.witnessData.blinding] - The blinding factor.
    * @property {number} [options.feeRate] - The fee rate in sat/vbyte (default: 1).
    * @property {number} [options.minConfirmations] - Minimum confirmations (default: 1).
    * @returns {Promise<TransferResult>} The transfer's result.
    */
-  async transfer(options) {
+  async transfer (options) {
     if (!options.assetId && !options.to) {
       throw new Error('assetId and to (invoice) are required for RGB asset transfers')
     }
@@ -284,7 +299,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
         min_confirmations: minConfirmations
       })
 
-      const signedPsbt = this.signPsbt(psbt)
+      const signedPsbt = await this.signPsbt(psbt)
 
       const result = await this.sendEnd({
         signed_psbt: signedPsbt
@@ -292,7 +307,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
 
       // Return in the format expected by @tetherto/wdk-wallet
       return {
-        hash: result.txid || result.id || 'unknown',
+        hash: result.txid || 'unknown',
         fee: BigInt(result.fee || 0)
       }
     } catch (error) {
@@ -303,18 +318,11 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
   /**
    * Returns the transfer history of the account.
    *
-   * @param {Object} [options] - The options.
-   * @param {"incoming" | "outgoing" | "all"} [options.direction] - If set, only returns transfers with the given direction (default: "all").
-   * @param {number} [options.limit] - The number of transfers to return (default: 10).
-   * @param {number} [options.skip] - The number of transfers to skip (default: 0).
-   * @param {string} [options.assetId] - Optional asset ID to filter transfers.
-   * @returns {Promise<Array>} The transfers.
+   * @param {string} [assetId] - Optional asset ID to filter transfers.
+   * @returns {Promise<Array<RgbTransfer>>} The transfers.
    */
-  async getTransfers(options = {}) {
-    const { limit = 10, skip = 0, assetId } = options
-
+  async getTransfers (assetId) {
     let transfers = []
-
     try {
       if (assetId) {
         transfers = await this._wallet.listTransfers(assetId)
@@ -330,7 +338,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
         }
       }
 
-      return transfers.slice(skip, skip + limit)
+      return transfers
     } catch (error) {
       return []
     }
@@ -341,7 +349,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    *
    * @returns {Promise<WalletAccountReadOnlyRgb>} The read-only account.
    */
-  async toReadOnlyAccount() {
+  async toReadOnlyAccount () {
     const address = await this.getAddress()
 
     const rgbReadOnlyAccount = new WalletAccountReadOnlyRgb(address, {
@@ -356,7 +364,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * Disposes the wallet account, erasing its private keys from the memory.
    * Note: RGB SDK manages keys internally, but we clear our derived keyPair.
    */
-  dispose() {
+  dispose () {
     if (this._keyPair?.privateKey) {
       // Clear private key from memory
       this._keyPair.privateKey.fill(0)
@@ -375,16 +383,16 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    *
    * @returns {WalletManager} The RGB SDK WalletManager instance.
    */
-  getRgbWallet() {
+  getRgbWallet () {
     return this._wallet
   }
 
   /**
    * Lists all RGB assets in the wallet.
    *
-   * @returns {Promise<Array>} Array of asset objects.
+   * @returns {Promise<Array<ListAssets>>} Array of asset objects.
    */
-  async listAssets() {
+  async listAssets () {
     return await this._wallet.listAssets()
   }
 
@@ -396,9 +404,9 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @param {string} options.name - Asset name.
    * @param {Array<number>} options.amounts - Array of amounts to issue.
    * @param {number} options.precision - Decimal precision.
-   * @returns {Promise<Object>} The issued asset.
+   * @returns {Promise<IssueAssetNIA>} The issued asset.
    */
-  async issueAssetNia(options) {
+  async issueAssetNia (options) {
     return await this._wallet.issueAssetNia(options)
   }
 
@@ -409,9 +417,9 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @param {string} [options.asset_id] - The asset ID to receive.
    * @param {number} options.amount - The amount to receive.
    * @param {boolean} options.witness - Create witness invoice, not require available utxos.
-   * @returns {Promise<Object>} Blind receive data including invoice.
+   * @returns {Promise<InvoiceReceiveData>} Blind receive data including invoice.
    */
-  async receiveAsset(options) {
+  async receiveAsset (options) {
     if (options.witness) {
       return await this._wallet.witnessReceive(options)
     } else {
@@ -431,7 +439,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @param {number} [options.min_confirmations] - Minimum confirmations (default: 1).
    * @returns {Promise<string>} The PSBT (base64 encoded).
    */
-  async sendBegin(options) {
+  async sendBegin (options) {
     return await this._wallet.sendBegin(options)
   }
 
@@ -441,7 +449,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @param {string} psbt - The PSBT to sign (base64 encoded).
    * @returns {Promise<string>} The signed PSBT (base64 encoded).
    */
-  async signPsbt(psbt) {
+  async signPsbt (psbt) {
     return await this._wallet.signPsbt(psbt)
   }
 
@@ -450,26 +458,10 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    *
    * @param {Object} options - Send end options.
    * @param {string} options.signed_psbt - The signed PSBT (base64 encoded).
-   * @returns {Promise<Object>} The send result.
+   * @returns {Promise<SendResult>} The send result.
    */
-  async sendEnd(options) {
+  async sendEnd (options) {
     return await this._wallet.sendEnd(options)
-  }
-
-  /**
-   * Complete send operation (combines sendBegin, signPsbt, sendEnd).
-   *
-   * @param {Object} options - Send options.
-   * @param {string} options.invoice - The blind receive invoice.
-   * @param {string} options.asset_id - The RGB asset ID to transfer.
-   * @param {Object} options.witness_data - The witness data.
-   * @param {number} options.amount - The amount to transfer.
-   * @param {number} [options.fee_rate] - Fee rate in sat/vbyte (default: 1).
-   * @param {number} [options.min_confirmations] - Minimum confirmations (default: 1).
-   * @returns {Promise<Object>} The send result.
-   */
-  async send(options) {
-    return await this._wallet.send(options)
   }
 
   /**
@@ -482,7 +474,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @param {number} [options.fee_rate] - Fee rate in sat/vbyte (default: 1).
    * @returns {Promise<number>} number of UTXOs created.
    */
-  async createUtxos(options) {
+  async createUtxos (options) {
     return await this._wallet.createUtxos(options)
   }
 
@@ -496,7 +488,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @param {number} [options.fee_rate] - Fee rate in sat/vbyte (default: 1).
    * @returns {Promise<string>} The PSBT (base64 encoded).
    */
-  async createUtxosBegin(options) {
+  async createUtxosBegin (options) {
     return await this._wallet.createUtxosBegin(options)
   }
 
@@ -507,25 +499,25 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @param {string} options.signed_psbt - The signed PSBT (base64 encoded).
    * @returns {Promise<number>} Number of UTXOs created.
    */
-  async createUtxosEnd(options) {
+  async createUtxosEnd (options) {
     return await this._wallet.createUtxosEnd(options)
   }
 
   /**
    * Lists unspent transaction outputs (UTXOs).
    *
-   * @returns {Promise<Array>} Array of UTXO objects.
+   * @returns {Promise<Array<Unspent>>} Array of UTXO objects.
    */
-  async listUnspents() {
+  async listUnspents () {
     return await this._wallet.listUnspents()
   }
 
   /**
    * Lists Bitcoin transactions.
    *
-   * @returns {Promise<Array>} Array of transaction objects.
+   * @returns {Promise<Array<Transaction>>} Array of transaction objects.
    */
-  async listTransactions() {
+  async listTransactions () {
     return await this._wallet.listTransactions()
   }
 
@@ -533,9 +525,9 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * Lists transfers for a specific asset.
    *
    * @param {string} assetId - The asset ID.
-   * @returns {Promise<Array>} Array of transfer objects.
+   * @returns {Promise<Array<RgbTransfer>>} Array of transfer objects.
    */
-  async listTransfers(assetId) {
+  async listTransfers (assetId) {
     return await this._wallet.listTransfers(assetId)
   }
 
@@ -545,18 +537,8 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @param {string} password - The password used to encrypt the backup file.
    * @returns {Promise<{message: string, download_url: string}>} The backup response from rgb-sdk.
    */
-  async createBackup(password) {
+  async createBackup (password) {
     return await this._wallet.createBackup(password)
-  }
-
-  /**
-   * Downloads an existing wallet backup.
-   *
-   * @param {string} [xpub] - The backup identifier
-   * @returns {Promise<ArrayBuffer | Buffer>} The backup file contents.
-   */
-  async downloadBackup(xpub) {
-    return await this._wallet.downloadBackup(xpub)
   }
 
   /**
@@ -571,7 +553,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    * @param {string} [params.master_fingerprint] - Optional master fingerprint override.
    * @returns {Promise<{message: string}>} The restore response from rgb-sdk.
    */
-  async restoreFromBackup(params) {
+  async restoreFromBackup (params) {
     return await this._wallet.restoreFromBackup(params)
   }
 
@@ -580,7 +562,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    *
    * @returns {Promise<void>}
    */
-  async refreshWallet() {
+  async refreshWallet () {
     return await this._wallet.refreshWallet()
   }
 
@@ -589,7 +571,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    *
    * @returns {Promise<void>}
    */
-  async registerWallet() {
+  async registerWallet () {
     return await this._wallet.registerWallet()
   }
 
@@ -598,7 +580,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
    *
    * @returns {Promise<void>}
    */
-  async syncWallet() {
+  async syncWallet () {
     return await this._wallet.syncWallet()
   }
 }

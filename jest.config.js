@@ -11,5 +11,7 @@ export default {
   ],
   transformIgnorePatterns: [
     'node_modules/(?!(rgb-sdk)/)'
-  ]
+  ],
+  prettierPath: null,
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js']
 }

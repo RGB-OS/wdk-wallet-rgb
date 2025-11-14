@@ -1,4 +1,3 @@
-import type { Readable } from 'node:stream';
 /** @typedef {import('@tetherto/wdk-wallet').FeeRates} FeeRates */
 /** @typedef {import('./wallet-account-read-only-rgb.js').RgbWalletConfig} RgbWalletConfig */
 export default class WalletManagerRgb extends WalletManager {
@@ -31,18 +30,16 @@ export default class WalletManagerRgb extends WalletManager {
     /**
      * Restores the account from a wallet backup.
      *
-     * @param {Object} restoreConfig - Restore configuration containing backup details.
+     * @param {RgbWalletConfig & {
+     *   backup: Buffer | Uint8Array | ArrayBuffer | import('node:stream').Readable,
+     *   password: string,
+     * }} restoreConfig - Restore configuration containing backup details.
      * @returns {Promise<WalletAccountRgb>} The restored account.
      */
     restoreAccountFromBackup(restoreConfig?: RgbWalletConfig & {
-        backup: Buffer | Uint8Array | ArrayBuffer | Readable;
+        backup: Buffer | Uint8Array | ArrayBuffer | import("node:stream").Readable;
         password: string;
-        filename?: string;
-        xpub_van?: string;
-        xpub_col?: string;
-        master_fingerprint?: string;
-        keys?: RgbWalletConfig["keys"];
-    }): Promise<WalletAccountRgb>;
+    }): Promise<typeof import("./wallet-account-rgb.js").default>;
     /**
      * Returns the wallet account at a specific BIP-44 derivation path.
      *

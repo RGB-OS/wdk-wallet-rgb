@@ -3,7 +3,15 @@
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
-import type { Readable } from 'node:stream';
+/** @typedef {import('rgb-sdk').Transaction} Transaction */
+/** @typedef {import('rgb-sdk').RgbTransfer} RgbTransfer */
+/** @typedef {import('rgb-sdk').IssueAssetNIAResponse} IssueAssetNIA */
+/** @typedef {import('rgb-sdk').ListAssetsResponse} ListAssets */
+/** @typedef {import('rgb-sdk').InvoiceReceiveData} InvoiceReceiveData */
+/** @typedef {import('rgb-sdk').SendAssetEndRequestModel} SendAssetEndRequest */
+/** @typedef {import('rgb-sdk').SendResult} SendResult */
+/** @typedef {import('rgb-sdk').Unspent} Unspent */
+/** @typedef {import('rgb-sdk').RgbTransfer} RgbTransfer */
 /** @typedef {import('./wallet-account-read-only-rgb.js').RgbTransaction} RgbTransaction */
 /** @typedef {import('./wallet-account-read-only-rgb.js').RgbWalletConfig} RgbWalletConfig */
 /** @implements {IWalletAccount} */
@@ -20,11 +28,11 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb implement
      * Restores an RGB wallet account from an encrypted backup.
      *
      * @param {string | Uint8Array} seed - The wallet's BIP-39 seed phrase.
-     * @param {RgbWalletConfig & { backup: Buffer | Uint8Array | ArrayBuffer | Readable, password: string, filename?: string, xpub_van?: string, xpub_col?: string, master_fingerprint?: string }} config - The configuration object with backup data.
+     * @param {RgbWalletConfig & { backup: Buffer | Uint8Array | ArrayBuffer | import('node:stream').Readable, password: string, filename?: string, xpub_van?: string, xpub_col?: string, master_fingerprint?: string }} config - The configuration object with backup data.
      * @returns {Promise<WalletAccountRgb>} The restored wallet account.
      */
-    static fromBackup(seed: string | Uint8Array, config: RgbWalletConfig & {
-        backup: Buffer | Uint8Array | ArrayBuffer | Readable;
+    static fromBackup(seed: string | Uint8Array, config?: RgbWalletConfig & {
+        backup: Buffer | Uint8Array | ArrayBuffer | import("node:stream").Readable;
         password: string;
         filename?: string;
         xpub_van?: string;
@@ -56,6 +64,12 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb implement
      * @type {string}
      */
     get path(): string;
+    /**
+     * The derivation path of the colored account.
+     *
+     * @type {string}
+     */
+    get coloredPath(): string;
     /**
      * The account's key pair.
      * Note: This derives keys using the same BIP-86 path that rgb-sdk uses for WDK interface compatibility.
@@ -101,30 +115,21 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb implement
      * This method implements the RGB transfer flow using sendBegin/sendEnd.
      *
      * @param {TransferOptions} options - The transfer's options.
-     * @property {string} options.asset_id - The RGB asset ID to transfer.
+     * @property {string} options.assetId - The RGB asset ID to transfer.
      * @property {string} options.to - The recipient's invoice (from blindReceive).
      * @property {number} options.value - The amount to transfer.
-     * @property {number} [options.fee_rate] - The fee rate in sat/vbyte (default: 1).
-     * @property {number} [options.min_confirmations] - Minimum confirmations (default: 1).
+     * @property {number} [options.feeRate] - The fee rate in sat/vbyte (default: 1).
+     * @property {number} [options.minConfirmations] - Minimum confirmations (default: 1).
      * @returns {Promise<TransferResult>} The transfer's result.
      */
     transfer(options: TransferOptions): Promise<TransferResult>;
     /**
      * Returns the transfer history of the account.
      *
-     * @param {Object} [options] - The options.
-     * @param {"incoming" | "outgoing" | "all"} [options.direction] - If set, only returns transfers with the given direction (default: "all").
-     * @param {number} [options.limit] - The number of transfers to return (default: 10).
-     * @param {number} [options.skip] - The number of transfers to skip (default: 0).
-     * @param {string} [options.asset_id] - Optional asset ID to filter transfers.
-     * @returns {Promise<Array>} The transfers.
+     * @param {string} [assetId] - Optional asset ID to filter transfers.
+     * @returns {Promise<Array<RgbTransfer>>} The transfers.
      */
-    getTransfers(options?: {
-        direction?: "incoming" | "outgoing" | "all";
-        limit?: number;
-        skip?: number;
-        asset_id?: string;
-    }): Promise<any[]>;
+    getTransfers(assetId?: string): Promise<Array<RgbTransfer>>;
     /**
      * Returns a read-only copy of the account.
      *
@@ -146,9 +151,9 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb implement
     /**
      * Lists all RGB assets in the wallet.
      *
-     * @returns {Promise<Array>} Array of asset objects.
+     * @returns {Promise<Array<ListAssets>>} Array of asset objects.
      */
-    listAssets(): Promise<any[]>;
+    listAssets(): Promise<Array<ListAssets>>;
     /**
      * Issues a new NIA (Non-Inflatable Asset).
      *
@@ -157,28 +162,28 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb implement
      * @param {string} options.name - Asset name.
      * @param {Array<number>} options.amounts - Array of amounts to issue.
      * @param {number} options.precision - Decimal precision.
-     * @returns {Promise<Object>} The issued asset.
+     * @returns {Promise<IssueAssetNIA>} The issued asset.
      */
     issueAssetNia(options: {
         ticker: string;
         name: string;
         amounts: Array<number>;
         precision: number;
-    }): Promise<any>;
+    }): Promise<IssueAssetNIA>;
     /**
-     * Creates an invoice for receiving RGB assets. Defaults to blind receive, with optional witness support.
+     * Creates a blind receive invoice for receiving RGB assets.
      *
-     * @param {Object} options - Receive options.
+     * @param {Object} options - Blind receive options.
      * @param {string} [options.asset_id] - The asset ID to receive.
      * @param {number} options.amount - The amount to receive.
-     * @param {boolean} [options.witness] - If true, uses witnessReceive flow.
-     * @returns {Promise<Object>} Receive data including invoice.
+     * @param {boolean} options.witness - Create witness invoice, not require available utxos.
+     * @returns {Promise<InvoiceReceiveData>} Blind receive data including invoice.
      */
     receiveAsset(options: {
         asset_id?: string;
         amount: number;
-        witness?: boolean;
-    }): Promise<any>;
+        witness: boolean;
+    }): Promise<InvoiceReceiveData>;
     /**
      * Begins a send operation (creates PSBT).
      *
@@ -203,39 +208,19 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb implement
      * Signs a PSBT.
      *
      * @param {string} psbt - The PSBT to sign (base64 encoded).
-     * @returns {string} The signed PSBT (base64 encoded).
+     * @returns {Promise<string>} The signed PSBT (base64 encoded).
      */
-    signPsbt(psbt: string): string;
+    signPsbt(psbt: string): Promise<string>;
     /**
      * Brodcasts a send transaction.
      *
      * @param {Object} options - Send end options.
      * @param {string} options.signed_psbt - The signed PSBT (base64 encoded).
-     * @returns {Promise<Object>} The send result.
+     * @returns {Promise<SendResult>} The send result.
      */
     sendEnd(options: {
         signed_psbt: string;
-    }): Promise<any>;
-    /**
-     * Complete send operation (combines sendBegin, signPsbt, sendEnd).
-     *
-     * @param {Object} options - Send options.
-     * @param {string} options.invoice - The blind receive invoice.
-     * @param {string} options.asset_id - The RGB asset ID to transfer.
-     * @param {Object} options.witness_data - The witness data.
-     * @param {number} options.amount - The amount to transfer.
-     * @param {number} [options.fee_rate] - Fee rate in sat/vbyte (default: 1).
-     * @param {number} [options.min_confirmations] - Minimum confirmations (default: 1).
-     * @returns {Promise<Object>} The send result.
-     */
-    send(options: {
-        invoice: string;
-        asset_id: string;
-        witness_data: any;
-        amount: number;
-        fee_rate?: number;
-        min_confirmations?: number;
-    }): Promise<any>;
+    }): Promise<SendResult>;
     /**
      * Creates UTXOs. Combines createUtxosBegin,signPsbt,createUtxosEnd.
      *
@@ -244,14 +229,14 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb implement
      * @param {number} [options.num] - Number of UTXOs to create.
      * @param {number} [options.size] - Size of each UTXO in satoshis.
      * @param {number} [options.fee_rate] - Fee rate in sat/vbyte (default: 1).
-     * @returns {Promise<string>} The PSBT (base64 encoded).
+     * @returns {Promise<number>} number of UTXOs created.
      */
     createUtxos(options: {
         up_to?: boolean;
         num?: number;
         size?: number;
         fee_rate?: number;
-    }): Promise<string>;
+    }): Promise<number>;
     /**
      * Begins UTXO creation operation.
      *
@@ -281,56 +266,54 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb implement
     /**
      * Lists unspent transaction outputs (UTXOs).
      *
-     * @returns {Promise<Array>} Array of UTXO objects.
+     * @returns {Promise<Array<Unspent>>} Array of UTXO objects.
      */
-    listUnspents(): Promise<any[]>;
+    listUnspents(): Promise<Array<Unspent>>;
     /**
      * Lists Bitcoin transactions.
      *
-     * @returns {Promise<Array>} Array of transaction objects.
+     * @returns {Promise<Array<Transaction>>} Array of transaction objects.
      */
-    listTransactions(): Promise<any[]>;
+    listTransactions(): Promise<Array<Transaction>>;
     /**
      * Lists transfers for a specific asset.
      *
      * @param {string} assetId - The asset ID.
-     * @returns {Promise<Array>} Array of transfer objects.
+     * @returns {Promise<Array<RgbTransfer>>} Array of transfer objects.
      */
-    listTransfers(assetId: string): Promise<any[]>;
+    listTransfers(assetId: string): Promise<Array<RgbTransfer>>;
     /**
      * Creates an encrypted backup of the wallet.
      *
      * @param {string} password - The password used to encrypt the backup file.
-     * @returns {Promise<any>} The backup response from rgb-sdk.
+     * @returns {Promise<{message: string, download_url: string}>} The backup response from rgb-sdk.
      */
-    createBackup(password: string): Promise<any>;
-    /**
-     * Downloads an existing wallet backup.
-     *
-     * @param {string} [backupId] - The backup identifier (defaults to wallet xpub if omitted).
-     * @returns {Promise<ArrayBuffer | Buffer>} The backup file contents.
-     */
-    downloadBackup(backupId?: string): Promise<ArrayBuffer | Buffer>;
+    createBackup(password: string): Promise<{
+        message: string;
+        download_url: string;
+    }>;
     /**
      * Restores a wallet from a backup file.
      *
      * @param {Object} params - Restore options.
-     * @param {Buffer | Uint8Array | ArrayBuffer | Readable} params.backup - The backup file data.
+     * @param {Buffer | Uint8Array | ArrayBuffer | import('node:stream').Readable} params.backup - The backup file data.
      * @param {string} params.password - The password used to encrypt the backup.
      * @param {string} [params.filename] - Optional filename metadata.
-     * @param {string} [params.xpub_van] - Optional vanilla xpub override.
-     * @param {string} [params.xpub_col] - Optional colored xpub override.
+     * @param {string} [params.xpub_van] -  Vanilla xpub override.
+     * @param {string} [params.xpub_col] - Colored xpub override.
      * @param {string} [params.master_fingerprint] - Optional master fingerprint override.
-     * @returns {Promise<any>} The restore response from rgb-sdk.
+     * @returns {Promise<{message: string}>} The restore response from rgb-sdk.
      */
     restoreFromBackup(params: {
-        backup: Buffer | Uint8Array | ArrayBuffer | Readable;
+        backup: Buffer | Uint8Array | ArrayBuffer | import("node:stream").Readable;
         password: string;
         filename?: string;
         xpub_van?: string;
         xpub_col?: string;
         master_fingerprint?: string;
-    }): Promise<any>;
+    }): Promise<{
+        message: string;
+    }>;
     /**
      * Refreshes the wallet state
      *
@@ -355,6 +338,14 @@ export type KeyPair = import("@tetherto/wdk-wallet").KeyPair;
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
 export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
+export type Transaction = import("rgb-sdk").Transaction;
+export type RgbTransfer = import("rgb-sdk").RgbTransfer;
+export type IssueAssetNIA = import("rgb-sdk").IssueAssetNIAResponse;
+export type ListAssets = import("rgb-sdk").ListAssetsResponse;
+export type InvoiceReceiveData = import("rgb-sdk").InvoiceReceiveData;
+export type SendAssetEndRequest = import("rgb-sdk").SendAssetEndRequestModel;
+export type SendResult = import("rgb-sdk").SendResult;
+export type Unspent = import("rgb-sdk").Unspent;
 export type RgbTransaction = import("./wallet-account-read-only-rgb.js").RgbTransaction;
 export type RgbWalletConfig = import("./wallet-account-read-only-rgb.js").RgbWalletConfig;
 import WalletAccountReadOnlyRgb from './wallet-account-read-only-rgb.js';
