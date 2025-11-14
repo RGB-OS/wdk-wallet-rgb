@@ -1,6 +1,7 @@
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
+/** @typedef {import('rgb-sdk').Transaction} Transaction */
 /**
  * @typedef {Object} RgbTransaction
  * @property {string} to - The transaction's recipient.
@@ -47,13 +48,21 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
      * Returns a transaction's receipt.
      *
      * @param {string} hash - The transaction's hash.
-     * @returns {Promise<Object | null>} The receipt, or null if the transaction has not been included in a block yet.
+     * @returns {Promise<Transaction | null>} The receipt, or null if the transaction has not been created yet.
      */
-    getTransactionReceipt(hash: string): Promise<any | null>;
+    getTransactionReceipt(hash: string): Promise<Transaction | null>;
+    /**
+     * Returns a transfer's receipt.
+     *
+     * @param {string} hash - The transfer's hash.
+     * @returns {Promise<RgbTransfer | null>} The receipt, or null if the transfer has not been created yet.
+     */
+    getTransferReceipt(hash: string): Promise<RgbTransfer | null>;
 }
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
 export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
+export type Transaction = import("rgb-sdk").Transaction;
 export type RgbTransaction = {
     /**
      * - The transaction's recipient.

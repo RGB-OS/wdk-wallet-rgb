@@ -22,15 +22,13 @@
     "lint": "standard --env jest",
     "lint:fix": "standard --fix --env jest",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
-    "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
-    "example:rgb": "node --experimental-vm-modules examples/rgb-wallet-flow.mjs"
+    "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage"
   },
   "dependencies": {
     "@scure/bip32": "1.7.0",
     "@tetherto/wdk-wallet": "^1.0.0-beta.1",
-    "axios": "^1.13.2",
     "bip39": "3.1.0",
-    "rgb-sdk": "file:../thunderlink-client"
+    "rgb-sdk": "1.2.1"
   },
   "devDependencies": {
     "cross-env": "7.0.3",

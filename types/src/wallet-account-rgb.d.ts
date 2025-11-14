@@ -118,6 +118,9 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb implement
      * @property {string} options.assetId - The RGB asset ID to transfer.
      * @property {string} options.to - The recipient's invoice (from blindReceive).
      * @property {number} options.value - The amount to transfer.
+     * @property {Object} [options.witnessData] - The witness data.
+     * @property {number} [options.witnessData.amount_sat] - The amount in satoshis.
+     * @property {number} [options.witnessData.blinding] - The blinding factor.
      * @property {number} [options.feeRate] - The fee rate in sat/vbyte (default: 1).
      * @property {number} [options.minConfirmations] - Minimum confirmations (default: 1).
      * @returns {Promise<TransferResult>} The transfer's result.
