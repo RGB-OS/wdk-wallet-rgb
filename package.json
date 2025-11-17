@@ -1,7 +1,7 @@
 {
   "name": "@tetherto/wdk-wallet-rgb",
   "version": "1.0.0-beta.1",
-  "description": "A simple package to manage BIP-32 wallets for RGB blockchain.",
+  "description": "A simple package to manage wallets for RGB.",
   "keywords": [
     "wdk",
     "wallet",
