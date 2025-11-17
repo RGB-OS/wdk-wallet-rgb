@@ -1,8 +1,28 @@
-import { describe, expect, test } from '@jest/globals'
+import { beforeAll, describe, expect, jest, test } from '@jest/globals'
 
-import { WalletAccountReadOnlyRgb } from '../index.js'
+// Mock rgb-sdk before importing anything that uses it
+jest.unstable_mockModule('../src/libs/rgb-sdk.js', () => {
+  const mockWalletManagerInstance = {
+    getBtcBalance: jest.fn().mockResolvedValue({ vanilla: { settled: 1000000 } }),
+    getAssetBalance: jest.fn().mockResolvedValue(500000),
+    sendBtcBegin: jest.fn().mockResolvedValue('psbt-bytes'),
+    signPsbt: jest.fn().mockResolvedValue('signed-psbt'),
+    estimateFee: jest.fn().mockResolvedValue({ fee: 1000 }),
+    estimateFeeRate: jest.fn().mockResolvedValue(1),
+    sendBegin: jest.fn().mockResolvedValue('psbt-bytes')
+  }
 
-const SEED_PHRASE = 'cook voyage document eight skate token alien guide drink uncle term abuse'
+  return {
+    WalletManager: jest.fn().mockImplementation(() => mockWalletManagerInstance)
+  }
+})
+
+let WalletAccountReadOnlyRgb
+
+beforeAll(async () => {
+  const module = await import('../src/wallet-account-read-only-rgb.js')
+  WalletAccountReadOnlyRgb = module.default
+})
 
 describe('WalletAccountReadOnlyRgb', () => {
   describe('constructor', () => {
