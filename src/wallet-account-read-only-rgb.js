@@ -70,8 +70,8 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
     }
 
     const { keys } = this._config
-    const network = this._config.network || 'regtest'
-    const rgbNodeEndpoint = this._config.rgb_node_endpoint || 'http://127.0.0.1:8000'
+    const network = this._config.network || 'testnet'
+    const rgbNodeEndpoint = this._config.rgb_node_endpoint || 'https://rgb-node.test.thunderstack.org'
 
     this._wallet = new WalletManager({
       xpub_van: keys.account_xpub_vanilla,

@@ -33,9 +33,9 @@ export default class WalletManagerRgb extends WalletManager {
     super(seed, config)
 
     /** @private */
-    this._network = config.network || 'regtest'
+    this._network = config.network || 'testnet'
     /** @private */
-    this._rgbNodeEndpoint = config.rgb_node_endpoint || 'http://127.0.0.1:8000'
+    this._rgbNodeEndpoint = config.rgb_node_endpoint || 'https://rgb-node.test.thunderstack.org'
     /** @private */
     this._keys = null
   }
