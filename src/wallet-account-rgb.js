@@ -20,7 +20,7 @@ import { WalletManager } from './libs/rgb-sdk.js'
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
-/** @typedef {import('rgb-sdk').Transaction} Transaction */
+/** @typedef {import('../index.js').RgbTransactionReceipt} RgbTransactionReceipt */
 /** @typedef {import('rgb-sdk').RgbTransfer} RgbTransfer */
 /** @typedef {import('rgb-sdk').IssueAssetNIAResponse} IssueAssetNIA */
 /** @typedef {import('rgb-sdk').ListAssetsResponse} ListAssets */
@@ -516,7 +516,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
   /**
    * Lists Bitcoin transactions.
    *
-   * @returns {Promise<Array<Transaction>>} Array of transaction objects.
+   * @returns {Promise<Array<RgbTransactionReceipt>>} Array of transaction objects.
    */
   async listTransactions () {
     return await this._wallet.listTransactions()

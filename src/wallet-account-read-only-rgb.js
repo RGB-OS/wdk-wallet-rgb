@@ -20,7 +20,7 @@ import { WalletManager } from './libs/rgb-sdk.js'
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
-/** @typedef {import('rgb-sdk').Transaction} Transaction */
+/** @typedef {import('../index.js').RgbTransactionReceipt} RgbTransactionReceipt */
 
 /**
  * @typedef {Object} RgbTransaction
@@ -159,7 +159,7 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
    * Returns a transaction's receipt.
    *
    * @param {string} hash - The transaction's hash.
-   * @returns {Promise<Transaction | null>} The receipt, or null if the transaction has not been created yet.
+   * @returns {Promise<RgbTransactionReceipt | null>} The receipt, or null if the transaction has not been created yet.
    */
   async getTransactionReceipt (hash) {
     const transactions = await this._wallet.listTransactions()

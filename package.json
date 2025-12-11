@@ -12,13 +12,13 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git://github.com/tetherto/wdk-wallet-spark.git"
+    "url": "git://github.com/tetherto/wdk-wallet-rgb.git"
   },
   "main": "index.js",
   "type": "module",
   "types": "./types",
   "scripts": {
-    "build:types": "rimraf *.d.ts **/*.d.ts; tsc",
+    "build:types": "tsc",
     "lint": "standard --env jest",
     "lint:fix": "standard --fix --env jest",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
@@ -34,7 +34,6 @@
   "devDependencies": {
     "cross-env": "7.0.3",
     "jest": "29.7.0",
-    "rimraf": "6.0.1",
     "standard": "17.1.2",
     "typescript": "5.8.3"
   },
