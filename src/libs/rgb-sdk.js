@@ -13,9 +13,4 @@
 // limitations under the License.
 'use strict'
 
-// import * as rgbSdk from 'rgb-sdk'
-
-// const { WalletManager, createWallet, deriveKeysFromSeed, Network }
-
-// export { WalletManager, createWallet, deriveKeysFromSeed, Network } = rgbSdk
 export { WalletManager, createWallet, deriveKeysFromSeed, BIP32_VERSIONS } from 'rgb-sdk'
