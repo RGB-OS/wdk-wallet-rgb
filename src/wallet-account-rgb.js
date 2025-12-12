@@ -29,6 +29,15 @@ import { HDKey } from '@scure/bip32'
 /** @typedef {import('rgb-sdk').IssueAssetNIAResponse} IssueAssetNIA */
 /** @typedef {import('rgb-sdk').ListAssetsResponse} ListAssets */
 /** @typedef {import('rgb-sdk').InvoiceReceiveData} InvoiceReceiveData */
+/** @typedef {import('rgb-sdk').BtcBalance} BtcBalance */
+
+/**
+ * Result returned by registerWallet method.
+ *
+ * @typedef {Object} RegisterWalletResult
+ * @property {string} address - The wallet's Bitcoin address.
+ * @property {BtcBalance} btc_balance - The wallet's Bitcoin balance.
+ */
 /** @typedef {import('rgb-sdk').SendAssetEndRequestModel} SendAssetEndRequest */
 /** @typedef {import('rgb-sdk').SendResult} SendResult */
 /** @typedef {import('rgb-sdk').Unspent} Unspent */
@@ -610,8 +619,9 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
 
   /**
    * Registers the wallet with the RGB node.
+   * Returns the wallet's address and current Bitcoin balance.
    *
-   * @returns {Promise<void>}
+   * @returns {Promise<RegisterWalletResult>} The registration result containing the wallet address and BTC balance.
    */
   async registerWallet () {
     return await this._wallet.registerWallet()
