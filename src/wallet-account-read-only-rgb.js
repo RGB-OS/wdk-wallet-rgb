@@ -117,11 +117,11 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
    * @param {RgbTransaction} tx - The transaction.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    */
-  async quoteSendTransaction (options) {
+  async quoteSendTransaction (tx) {
     const feeRate = await this._wallet.estimateFeeRate(1)
     const psbt = await this._wallet.sendBtcBegin({
-      address: options.to,
-      amount: options.value,
+      address: tx.to,
+      amount: tx.value,
       fee_rate: Math.round(feeRate)
     })
     const signedPsbt = await this._wallet.signPsbt(psbt)
