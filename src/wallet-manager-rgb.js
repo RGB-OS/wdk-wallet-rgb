@@ -21,6 +21,8 @@ const MEMPOOL_SPACE_URL = 'https://mempool.space'
 /** @typedef {import('@tetherto/wdk-wallet').FeeRates} FeeRates */
 
 /** @typedef {import('./wallet-account-read-only-rgb.js').RgbWalletConfig} RgbWalletConfig */
+/** @typedef {import('./wallet-account-rgb.js').RgbRestoreConfig} RgbRestoreConfig */
+/** @typedef {import('rgb-sdk').GeneratedKeys} GeneratedKeys */
 
 export default class WalletManagerRgb extends WalletManager {
   /**
@@ -35,8 +37,8 @@ export default class WalletManagerRgb extends WalletManager {
     /** @private */
     this._network = config.network || 'testnet'
     /** @private */
-    this._rgbNodeEndpoint = config.rgb_node_endpoint || 'https://rgb-node.test.thunderstack.org'
-    /** @private */
+    this._rgbNodeEndpoint = config.rgbNodeEndpoint || 'https://rgb-node.test.thunderstack.org'
+    /** @private @type {GeneratedKeys | null} */
     this._keys = null
   }
 
@@ -60,21 +62,23 @@ export default class WalletManagerRgb extends WalletManager {
   /**
    * Returns the account always at index 0 RGB does not support multiple BIP-44
    *
+   * @param {number} [index] - The account index (must be 0 for RGB).
    * @example
    * const account = await wallet.getAccount();
    * @returns {Promise<WalletAccountRgb>} The account.
    */
-  async getAccount () {
-    const index = 0 //
+  async getAccount (index = 0) {
+    if (index !== 0) {
+      throw new Error('RGB wallets only support account index 0. Multiple accounts are not supported.')
+    }
     if (!this._accounts[index]) {
       await this._initializeKeys()
       const { default: WalletAccountRgb } = await import('./wallet-account-rgb.js')
       const account = await WalletAccountRgb.at(
         this.seed,
         {
-          ...this._config,
           network: this._network,
-          rgb_node_endpoint: this._rgbNodeEndpoint,
+          rgbNodeEndpoint: this._rgbNodeEndpoint,
           keys: this._keys
         }
       )
@@ -88,10 +92,7 @@ export default class WalletManagerRgb extends WalletManager {
   /**
    * Restores the account from a wallet backup.
    *
-   * @param {RgbWalletConfig & {
-   *   backup: Buffer | Uint8Array | ArrayBuffer | import('node:stream').Readable,
-   *   password: string,
-   * }} restoreConfig - Restore configuration containing backup details.
+   * @param {RgbRestoreConfig} restoreConfig - Restore configuration containing backup details.
    * @returns {Promise<WalletAccountRgb>} The restored account.
    */
   async restoreAccountFromBackup (restoreConfig = {}) {
@@ -104,17 +105,12 @@ export default class WalletManagerRgb extends WalletManager {
       ...this._config,
       ...restoreConfig,
       network: this._network,
-      rgb_node_endpoint: this._rgbNodeEndpoint,
+      rgbNodeEndpoint: this._rgbNodeEndpoint,
       keys: this._keys
-    }
-
-    if (!config.keys) {
-      throw new Error('Wallet keys are required to restore from backup.')
     }
 
     const account = await WalletAccountRgb.fromBackup(this.seed, config)
     this._accounts[index] = account
-    this._keys = config.keys
 
     return account
   }
@@ -123,7 +119,7 @@ export default class WalletManagerRgb extends WalletManager {
    * Returns the wallet account at a specific BIP-44 derivation path.
    *
    * @param {string} path - The derivation path (e.g. "0'/0/0").
-   * @returns {Promise<WalletAccountRgb>} The account.
+   * @returns {Promise<never>} The account.
    */
   async getAccountByPath (path) {
     throw new Error('Method not supported on the RGB')
@@ -143,5 +139,22 @@ export default class WalletManagerRgb extends WalletManager {
       normal: BigInt(hourFee),
       fast: BigInt(fastestFee)
     }
+  }
+
+  /**
+   * Disposes of the wallet manager and securely wipes cached keys.
+   * Overrides the parent dispose() to explicitly clean up sensitive data in this._keys.
+   */
+  dispose () {
+    if (this._keys) {
+      if (this._keys.xpriv) {
+        this._keys.xpriv = ''
+      }
+      if (this._keys.mnemonic) {
+        this._keys.mnemonic = ''
+      }
+      this._keys = null
+    }
+    super.dispose()
   }
 }

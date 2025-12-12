@@ -66,7 +66,7 @@ With this package you can:
 npm install @tetherto/wdk-wallet-rgb
 ```
 
-You also need access to an RGB node (default endpoint `http://127.0.0.1:8000`) and a Bitcoin backend that the node trusts. The examples assume a locally running regtest stack.
+You also need access to an RGB node (default endpoint `https://rgb-node.test.thunderstack.org`) and a Bitcoin backend that the node trusts. The examples assume a locally running regtest stack.
 
 ---
 
@@ -75,7 +75,7 @@ You also need access to an RGB node (default endpoint `http://127.0.0.1:8000`) a
 ```javascript
 import WalletManagerRgb from '@tetherto/wdk-wallet-rgb'
 
-const RGB_NODE_ENDPOINT = 'http://127.0.0.1:8000'
+const RGB_NODE_ENDPOINT = 'https://rgb-node.test.thunderstack.org'
 const NETWORK = 'regtest'
 
 const seedPhrase = 'poem twice question inch happy capital grain quality laptop dry chaos what';
@@ -83,7 +83,7 @@ const seedPhrase = 'poem twice question inch happy capital grain quality laptop 
 // Initialise the WDK manager – it will derive RGB keys on demand
 const manager = new WalletManagerRgb(seedPhrase, {
   network: 'mainnet', // 'mainnet', 'testnet', 'regtest'
-  rgb_node_endpoint: 'http://127.0.0.1:8000'
+  rgbNodeEndpoint: 'https://rgb-node.test.thunderstack.org'
 })
 
 const account = await manager.getAccount()
@@ -108,7 +108,7 @@ manager.dispose()
 ```javascript
 const manager = new WalletManagerRgb(mnemonic, {
   network: 'regtest',
-  rgb_node_endpoint: 'http://127.0.0.1:8000'
+  rgbNodeEndpoint: 'https://rgb-node.test.thunderstack.org'
 })
 const account = await manager.getAccount() // always index 0
 ```
@@ -163,7 +163,7 @@ const backupFile = await account.downloadBackup() // defaults to the wallet xpub
 
 const restoredManager = new WalletManagerRgb(mnemonic, {
   network: 'regtest',
-  rgb_node_endpoint: 'http://127.0.0.1:8000'
+  rgbNodeEndpoint: 'https://rgb-node.test.thunderstack.org'
 })
 
 const restored = await restoredManager.restoreAccountFromBackup({

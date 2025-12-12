@@ -15,12 +15,19 @@ const createMockWallet = () => ({
   registerWallet: jest.fn().mockResolvedValue(undefined),
   getAddress: jest.fn().mockResolvedValue('bc1p-test-address'),
   getBtcBalance: jest.fn().mockResolvedValue({ vanilla: { settled: 1500000 } }),
-  getAssetBalance: jest.fn().mockResolvedValue(750000),
-  listAssets: jest.fn().mockResolvedValue([{ assetId: 'asset-1' }]),
+  getAssetBalance: jest.fn().mockResolvedValue({ settled: 750000 }),
+  dispose: jest.fn(),
+  listAssets: jest.fn().mockResolvedValue({
+    nia: [{ asset_id: 'asset-1' }],
+    uda: null,
+    cfa: null
+  }),
   listTransfers: jest.fn().mockResolvedValue([{ txid: 'tx-1', direction: 'incoming' }]),
   sendBegin: jest.fn().mockResolvedValue('psbt-bytes'),
   signPsbt: jest.fn().mockImplementation(psbt => `signed:${psbt}`),
   sendEnd: jest.fn().mockResolvedValue({ txid: 'abc123', fee: 210 }),
+  estimateFeeRate: jest.fn().mockResolvedValue(1),
+  estimateFee: jest.fn().mockResolvedValue({ fee: 210 }),
   send: jest.fn().mockResolvedValue({ txid: 'abc123', fee: 210 }),
   signMessage: jest.fn().mockResolvedValue('signed-message'),
   verifyMessage: jest.fn().mockResolvedValue(true),
@@ -59,7 +66,13 @@ beforeAll(async () => {
       WalletManager: WalletManagerMock,
       deriveKeysFromMnemonic: jest.fn(),
       deriveKeysFromSeed: jest.fn(),
-      createWallet: jest.fn()
+      createWallet: jest.fn(),
+      BIP32_VERSIONS: {
+        mainnet: { public: 76067358, private: 76066276 },
+        testnet: { public: 70617039, private: 70615956 },
+        signet: { public: 70617039, private: 70615956 },
+        regtest: { public: 70617039, private: 70615956 }
+      }
     }
   })
 
@@ -69,7 +82,7 @@ beforeAll(async () => {
 
 const createAccountConfig = (configOverrides = {}, keysOverrides = {}) => ({
   network: 'regtest',
-  rgb_node_endpoint: 'http://127.0.0.1:8000',
+  rgbNodeEndpoint: 'http://127.0.0.1:8000',
   keys: {
     ...mockKeysBase,
     ...keysOverrides
@@ -107,7 +120,7 @@ describe('WalletAccountRgb', () => {
 
       expect(account).toBeInstanceOf(WalletAccountRgb)
       expect(account._config.network).toBe(config.network)
-      expect(account._config.rgb_node_endpoint).toBe(config.rgb_node_endpoint)
+      expect(account._config.rgbNodeEndpoint).toBe(config.rgbNodeEndpoint)
       expect(account.index).toBe(0)
     })
   })
@@ -149,14 +162,14 @@ describe('WalletAccountRgb', () => {
 
     test('transfer performs RGB send flow', async () => {
       const { account, wallet } = await createAccount()
-      const result = await account.transfer({ asset_id: 'asset-1', to: 'rgb1-invoice', value: 100 })
+      const result = await account.transfer({ token: 'asset-1', recipient: 'rgb:invoice-123', amount: 100 })
 
       expect(wallet.sendBegin).toHaveBeenCalledWith({
-        invoice: 'rgb1-invoice',
+        invoice: 'rgb:invoice-123',
         asset_id: 'asset-1',
         witness_data: undefined,
         amount: 100,
-        fee_rate: undefined,
+        fee_rate: 1,
         min_confirmations: undefined
       })
       expect(wallet.signPsbt).toHaveBeenCalledWith('psbt-bytes')
@@ -164,25 +177,58 @@ describe('WalletAccountRgb', () => {
       expect(result).toEqual({ hash: 'abc123', fee: BigInt(210) })
     })
 
-    test('getTransfers aggregates transfers across assets', async () => {
+    test('getTransfers returns transfers without asset filter', async () => {
       const { account, wallet } = await createAccount()
-      wallet.listAssets.mockResolvedValueOnce([
-        { asset_id: 'asset-alpha' },
-        { asset_id: 'asset-beta' }
+      wallet.listTransfers.mockResolvedValue([
+        { txid: 'tx-1', direction: 'incoming' },
+        { txid: 'tx-2', direction: 'outgoing' }
       ])
-      wallet.listTransfers.mockResolvedValue([{ txid: 'tx-1', direction: 'incoming' }])
 
       const transfers = await account.getTransfers()
 
-      expect(wallet.listAssets).toHaveBeenCalled()
-      expect(wallet.listTransfers).toHaveBeenCalledTimes(2)
-      expect(transfers).toEqual([{ txid: 'tx-1', direction: 'incoming' }, { txid: 'tx-1', direction: 'incoming' }])
+      expect(wallet.listTransfers).toHaveBeenCalledWith()
+      expect(transfers).toEqual([
+        { txid: 'tx-1', direction: 'incoming' },
+        { txid: 'tx-2', direction: 'outgoing' }
+      ])
+    })
+
+    test('getTransfers with assetId filters by asset', async () => {
+      const { account, wallet } = await createAccount()
+      wallet.listTransfers.mockResolvedValue([{ txid: 'tx-1', direction: 'incoming' }])
+
+      const transfers = await account.getTransfers({ assetId: 'asset-alpha' })
+
+      expect(wallet.listTransfers).toHaveBeenCalledWith('asset-alpha')
+      expect(transfers).toEqual([{ txid: 'tx-1', direction: 'incoming' }])
+    })
+
+    test('getTransfers applies pagination', async () => {
+      const { account, wallet } = await createAccount()
+      wallet.listTransfers.mockResolvedValue([
+        { txid: 'tx-1' },
+        { txid: 'tx-2' },
+        { txid: 'tx-3' },
+        { txid: 'tx-4' },
+        { txid: 'tx-5' }
+      ])
+
+      const transfers = await account.getTransfers({ limit: 2, skip: 1 })
+
+      expect(wallet.listTransfers).toHaveBeenCalledWith()
+      expect(transfers).toEqual([{ txid: 'tx-2' }, { txid: 'tx-3' }])
     })
 
     test('listAssets proxies to wallet manager', async () => {
       const { account, wallet } = await createAccount()
+      const mockAssetsResponse = {
+        nia: [{ asset_id: 'asset-1' }],
+        uda: null,
+        cfa: null
+      }
+      wallet.listAssets.mockResolvedValueOnce(mockAssetsResponse)
       const assets = await account.listAssets()
-      expect(assets).toEqual([{ assetId: 'asset-1' }])
+      expect(assets).toEqual(mockAssetsResponse)
       expect(wallet.listAssets).toHaveBeenCalled()
     })
 
@@ -252,14 +298,21 @@ describe('WalletAccountRgb', () => {
         backup: Buffer.from('backup-data'),
         password: 'secure-password',
         filename: 'backup.rgb',
-        xpub_van: 'custom-xpub-van',
-        xpub_col: 'custom-xpub-col',
-        master_fingerprint: 'deadbeef'
+        xpubVan: 'custom-xpub-van',
+        xpubCol: 'custom-xpub-col',
+        masterFingerprint: 'deadbeef'
       }
 
       const result = await account.restoreFromBackup(params)
       expect(result).toEqual({ restored: true })
-      expect(wallet.restoreFromBackup).toHaveBeenCalledWith(params)
+      expect(wallet.restoreFromBackup).toHaveBeenCalledWith({
+        backup: params.backup,
+        password: params.password,
+        filename: params.filename,
+        xpub_van: params.xpubVan,
+        xpub_col: params.xpubCol,
+        master_fingerprint: params.masterFingerprint
+      })
     })
   })
 
@@ -270,7 +323,7 @@ describe('WalletAccountRgb', () => {
 
       expect(readOnly._config.keys).toEqual(config.keys)
       expect(readOnly._config.network).toBe(config.network)
-      expect(readOnly._config.rgb_node_endpoint).toBe(config.rgb_node_endpoint)
+      expect(readOnly._config.rgbNodeEndpoint).toBe(config.rgbNodeEndpoint)
     })
   })
 
@@ -295,7 +348,7 @@ describe('WalletAccountRgb', () => {
         xpub_col: config.keys.account_xpub_colored,
         master_fingerprint: config.keys.master_fingerprint,
         network: config.network,
-        rgb_node_endpoint: config.rgb_node_endpoint
+        rgb_node_endpoint: config.rgbNodeEndpoint
       })
 
       expect(walletInstance.restoreFromBackup).toHaveBeenCalledWith({
@@ -324,7 +377,7 @@ describe('WalletAccountRgb', () => {
       account.dispose()
 
       expect(account._wallet).toBeNull()
-      expect(account._keyPair).toBeNull()
+      expect(account._keyPair?.privateKey).toBeNull()
     })
   })
 })

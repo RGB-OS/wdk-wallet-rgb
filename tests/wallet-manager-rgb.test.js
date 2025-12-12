@@ -49,7 +49,13 @@ jest.unstable_mockModule('../src/libs/rgb-sdk.js', () => {
     WalletManager: jest.fn().mockImplementation(() => mockWalletManagerInstance),
     deriveKeysFromMnemonic: jest.fn().mockResolvedValue(mockKeys),
     deriveKeysFromSeed: deriveKeysFromSeedMock,
-    createWallet: jest.fn().mockResolvedValue({})
+    createWallet: jest.fn().mockResolvedValue({}),
+    BIP32_VERSIONS: {
+      mainnet: { public: 76067358, private: 76066276 },
+      testnet: { public: 70617039, private: 70615956 },
+      signet: { public: 70617039, private: 70615956 },
+      regtest: { public: 70617039, private: 70615956 }
+    }
   }
 })
 
@@ -62,7 +68,7 @@ describe('WalletManagerRgb', () => {
   beforeEach(() => {
     wallet = new WalletManagerRgb(SEED_PHRASE, {
       network: 'regtest',
-      rgb_node_endpoint: 'http://127.0.0.1:8000'
+      rgbNodeEndpoint: 'http://127.0.0.1:8000'
     })
   })
 
@@ -133,7 +139,7 @@ describe('WalletManagerRgb', () => {
         filename: 'wallet.rgb',
         keys: mockKeys,
         network: 'regtest',
-        rgb_node_endpoint: 'http://127.0.0.1:8000'
+        rgbNodeEndpoint: 'http://127.0.0.1:8000'
       }))
       expect(result).toBe(restoredAccount)
 
