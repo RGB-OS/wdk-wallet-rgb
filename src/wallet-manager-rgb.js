@@ -142,7 +142,6 @@ export default class WalletManagerRgb extends WalletManager {
   }
 
   /**
-   * Disposes of the wallet manager and securely wipes cached keys.
    * Overrides the parent dispose() to explicitly clean up sensitive data in this._keys.
    */
   dispose () {
