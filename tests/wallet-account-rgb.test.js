@@ -3,9 +3,9 @@ import { beforeAll, beforeEach, describe, expect, jest, test } from '@jest/globa
 const SEED_PHRASE = 'cook voyage document eight skate token alien guide drink uncle term abuse'
 
 const mockKeysBase = {
-  account_xpub_vanilla: 'xpub6BGG5MockVanilla',
-  account_xpub_colored: 'xpub6BGG5MockColored',
-  master_fingerprint: '12345678',
+  account_xpub_vanilla: 'tpubDDMTD6EJKKLP6Gx9JUnMpjf9NYyePJszmqBnNqULNmcgEuU1yQ3JsHhWZdRFecszWETnNsmhEe9vnaNibfzZkDDHycbR2rGFbXdHWRgBfu7',
+  account_xpub_colored: 'tpubDDPLJfdVbDoGtnn6hSto3oCnm6hpfHe9uk2MxcANanxk87EuquhSVfSLQv7e5UykgzaFn41DUXaikjjVGcUSUTGNaJ9LcozfRwatKp1vTfC',
+  master_fingerprint: 'a66bffef',
   mnemonic: SEED_PHRASE,
   xpriv: "tprv8ZgxMBicQKsPdQaFUyyJodvPVicQ6HxagSy18xrJmd8GPHUD1YuDR5WXL9eUDiNnLfkufjL2EwzWpnkiyck5da731zevC4t34QyR69uTSSX",
   xpub: "tpubD6NzVbkrYhZ4Wsc3NdduD3aW4k8LFd9VFkZnRUtcBtvfDmiydwioba8PWFrJRBQrSSHzfvR8Gz8sGvqV3vm5wEmgT1dcWDAaz2xRKRPaBok"

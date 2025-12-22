@@ -1,4 +1,4 @@
-// Copyright 2025 UTEXO
+// Copyright 2025 RGB OS Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import { WalletManager, BIP32_VERSIONS } from 'rgb-sdk'
 // eslint-disable-next-line camelcase
 import { sodium_memzero } from 'sodium-universal'
 import { HDKey } from '@scure/bip32'
+import { base58 } from '@scure/base'
 
 /** @typedef {import('@tetherto/wdk-wallet').IWalletAccount} IWalletAccount */
 /** @typedef {import('@tetherto/wdk-wallet').KeyPair} KeyPair */
@@ -66,7 +67,6 @@ import { HDKey } from '@scure/bip32'
 /**
  * @typedef {RgbWalletConfig & RgbRestoreParams} RgbRestoreConfig
  */
-
 
 /** @implements {IWalletAccount} */
 export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
@@ -238,9 +238,9 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
       publicKey: hdPriv.publicKey,
       privateKey: hdPriv.privateKey,
       // RGB-specific fields
-      accountXpubVanilla: Buffer.from(keys.account_xpub_vanilla, 'hex'),
-      accountXpubColored: Buffer.from(keys.account_xpub_colored, 'hex'),
-      masterFingerprint: Buffer.from(keys.master_fingerprint, 'hex')
+      accountXpubVanilla: new Uint8Array(base58.decode(keys.account_xpub_vanilla)),
+      accountXpubColored: new Uint8Array(base58.decode(keys.account_xpub_colored)),
+      masterFingerprint: new Uint8Array(Buffer.from(keys.master_fingerprint, 'hex'))
     }
     return this._keyPair
   }
