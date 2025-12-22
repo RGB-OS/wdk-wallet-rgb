@@ -1,5 +1,5 @@
 {
-  "name": "wdk-wallet-rgb",
+  "name": "@utexo/wdk-wallet-rgb",
   "version": "1.0.1",
   "description": "A simple package to manage wallets for RGB.",
   "keywords": [
@@ -8,11 +8,11 @@
     "bip-32",
     "rgb"
   ],
-  "author": "bandliy",
+  "author": "UTEXO",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git://github.com/utxo/wdk-wallet-rgb.git"
+    "url": "git://github.com/utexo/wdk-wallet-rgb.git"
   },
   "main": "index.js",
   "type": "module",
@@ -29,7 +29,7 @@
     "@tetherto/wdk-wallet": "^1.0.0-beta.1",
     "bare-node-runtime": "1.1.4",
     "bip39": "3.1.0",
-    "rgb-sdk": "1.2.5",
+    "rgb-sdk": "../thunderlink-client",
     "sodium-universal": "5.0.1"
   },
   "devDependencies": {
