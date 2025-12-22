@@ -1,11 +1,11 @@
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
-/** @typedef {import('../index.js').RgbTransactionReceipt} RgbTransactionReceipt */
-/** @typedef {import('../index.js').RgbTransferReceipt} RgbTransferReceipt */
+/** @typedef {import('rgb-sdk').Transaction} RgbTransactionReceipt */
+/** @typedef {import('rgb-sdk').RgbTransfer} RgbTransferReceipt */
 /** @typedef {import('rgb-sdk').GeneratedKeys} Keys */
 /**
  * @typedef {Object} WitnessData
- * @property {number} [amountSat] - The amount in satoshis.
+ * @property {number | bigint} [amountSat] - The amount in satoshis.
  * @property {number} [blinding] - The blinding factor.
  */
 /**
@@ -48,13 +48,6 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
     /** @private */
     private _wallet;
     /**
-     * Quotes the costs of a send transaction operation.
-     *
-     * @param {RgbTransaction} tx - The transaction.
-     * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
-     */
-    quoteSendTransaction(options: any): Promise<Omit<TransactionResult, "hash">>;
-    /**
      * Quotes the costs of a transfer operation.
      *
      * @param {TransferOptions} options - The transfer's options.
@@ -78,14 +71,14 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
 }
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
-export type RgbTransactionReceipt = import("../index.js").RgbTransactionReceipt;
-export type RgbTransferReceipt = import("../index.js").RgbTransferReceipt;
+export type RgbTransactionReceipt = import("rgb-sdk").Transaction;
+export type RgbTransferReceipt = import("rgb-sdk").RgbTransfer;
 export type Keys = import("rgb-sdk").GeneratedKeys;
 export type WitnessData = {
     /**
      * - The amount in satoshis.
      */
-    amountSat?: number;
+    amountSat?: number | bigint;
     /**
      * - The blinding factor.
      */

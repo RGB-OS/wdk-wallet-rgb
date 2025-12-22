@@ -9,7 +9,7 @@ const mockKeys = {
   master_fingerprint: 'a66bffef',
 };
 // Mock rgb-sdk before importing anything that uses it
-jest.unstable_mockModule('../src/libs/rgb-sdk.js', () => {
+jest.unstable_mockModule('rgb-sdk', () => {
 
 
   const mockWalletManagerInstance = {

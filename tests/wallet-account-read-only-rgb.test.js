@@ -10,7 +10,7 @@ const mockKeys = {
 }
 
 // Mock rgb-sdk before importing anything that uses it
-jest.unstable_mockModule('../src/libs/rgb-sdk.js', () => {
+jest.unstable_mockModule('rgb-sdk', () => {
   const mockWalletManagerInstance = {
     getBtcBalance: jest.fn().mockResolvedValue({ vanilla: { settled: 1000000 } }),
     getAssetBalance: jest.fn().mockResolvedValue({ settled: 500000 }),

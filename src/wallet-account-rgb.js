@@ -1,20 +1,7 @@
-// Copyright 2024 Tether Operations Limited
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 'use strict'
 
 import WalletAccountReadOnlyRgb from './wallet-account-read-only-rgb.js'
-import { WalletManager, BIP32_VERSIONS } from './libs/rgb-sdk.js'
+import { WalletManager, BIP32_VERSIONS } from 'rgb-sdk'
 // eslint-disable-next-line camelcase
 import { sodium_memzero } from 'sodium-universal'
 import { HDKey } from '@scure/bip32'
@@ -24,8 +11,8 @@ import { HDKey } from '@scure/bip32'
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
 /** @typedef {import('./wallet-account-read-only-rgb.js').TransferOptions} TransferOptions */
-/** @typedef {import('../index.js').RgbTransactionReceipt} RgbTransactionReceipt */
-/** @typedef {import('../index.js').RgbTransferReceipt} RgbTransferReceipt */
+/** @typedef {import('rgb-sdk').Transaction} RgbTransactionReceipt */
+/** @typedef {import('rgb-sdk').RgbTransfer} RgbTransferReceipt */
 /** @typedef {import('rgb-sdk').IssueAssetNIAResponse} IssueAssetNIA */
 /** @typedef {import('rgb-sdk').ListAssetsResponse} ListAssets */
 /** @typedef {import('rgb-sdk').InvoiceReceiveData} InvoiceReceiveData */
@@ -46,10 +33,11 @@ import { HDKey } from '@scure/bip32'
 
 /**
  * @typedef {Object} RgbKeyPair
- * @extends {KeyPair}
- * @property {string} [accountXpubVanilla] - The vanilla extended public key.
- * @property {string} [accountXpubColored] - The colored extended public key.
- * @property {string} [masterFingerprint] - The master fingerprint.
+ * @property {Uint8Array} publicKey - The public key.
+ * @property {Uint8Array | null} privateKey - The private key (null if the account has been disposed).
+ * @property {Uint8Array} [accountXpubVanilla] - The vanilla extended public key.
+ * @property {Uint8Array} [accountXpubColored] - The colored extended public key.
+ * @property {Uint8Array} [masterFingerprint] - The master fingerprint.
  */
 
 /**
@@ -66,9 +54,6 @@ import { HDKey } from '@scure/bip32'
  * @typedef {RgbWalletConfig & RgbRestoreParams} RgbRestoreConfig
  */
 
-/**
- * @typedef {RgbRestoreParams} RgbRestoreFromBackupParams
- */
 
 /** @implements {IWalletAccount} */
 export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
@@ -240,9 +225,9 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
       publicKey: hdPriv.publicKey,
       privateKey: hdPriv.privateKey,
       // RGB-specific fields
-      accountXpubVanilla: keys.account_xpub_vanilla,
-      accountXpubColored: keys.account_xpub_colored,
-      masterFingerprint: keys.master_fingerprint
+      accountXpubVanilla: Buffer.from(keys.account_xpub_vanilla, 'hex'),
+      accountXpubColored: Buffer.from(keys.account_xpub_colored, 'hex'),
+      masterFingerprint: Buffer.from(keys.master_fingerprint, 'hex')
     }
     return this._keyPair
   }
@@ -288,9 +273,6 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
   async sendTransaction (options) {
     try {
       const { fee } = await this.quoteSendTransaction(options)
-      if (this._config.transferMaxFee !== undefined && fee >= this._config.transferMaxFee) {
-        throw new Error('Exceeded maximum fee cost for send transaction operation.')
-      }
       const psbt = await this._wallet.sendBtcBegin({
         address: options.to,
         amount: options.value,
@@ -329,11 +311,13 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
     // 3. Sender signs the PSBT using signPsbt
     // 4. Sender calls sendEnd with the signed PSBT
 
+    // Quote the transfer and validate fee before attempting the transfer
+    const { fee } = await this.quoteTransfer(options)
+    if (this._config.transferMaxFee !== undefined && fee >= this._config.transferMaxFee) {
+      throw new Error('Exceeded maximum fee cost for transfer operation.')
+    }
+
     try {
-      const { fee } = await this.quoteTransfer(options)
-      if (this._config.transferMaxFee !== undefined && fee >= this._config.transferMaxFee) {
-        throw new Error('Exceeded maximum fee cost for transfer operation.')
-      }
       const psbt = await this.sendBegin({
         invoice: options.recipient,
         asset_id: options.token,
@@ -594,7 +578,7 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb {
   /**
    * Restores a wallet from a backup file.
    *
-   * @param {RgbRestoreFromBackupParams} params - Restore options.
+   * @param {RgbRestoreParams} params - Restore options.
    * @returns {Promise<{message: string}>} The restore response from rgb-sdk.
    */
   async restoreFromBackup (params) {

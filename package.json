@@ -1,6 +1,6 @@
 {
-  "name": "@tetherto/wdk-wallet-rgb",
-  "version": "1.0.0-beta.1",
+  "name": "wdk-wallet-rgb",
+  "version": "1.0.1",
   "description": "A simple package to manage wallets for RGB.",
   "keywords": [
     "wdk",
@@ -8,11 +8,11 @@
     "bip-32",
     "rgb"
   ],
-  "author": "Tether",
+  "author": "bandliy",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git://github.com/tetherto/wdk-wallet-rgb.git"
+    "url": "git://github.com/utxo/wdk-wallet-rgb.git"
   },
   "main": "index.js",
   "type": "module",

@@ -14,7 +14,8 @@
 'use strict'
 
 import WalletManager from '@tetherto/wdk-wallet'
-import { deriveKeysFromSeed } from './libs/rgb-sdk.js'
+import { deriveKeysFromSeed } from 'rgb-sdk'
+import WalletAccountRgb from './wallet-account-rgb.js'
 
 const MEMPOOL_SPACE_URL = 'https://mempool.space'
 
@@ -73,7 +74,6 @@ export default class WalletManagerRgb extends WalletManager {
     }
     if (!this._accounts[index]) {
       await this._initializeKeys()
-      const { default: WalletAccountRgb } = await import('./wallet-account-rgb.js')
       const account = await WalletAccountRgb.at(
         this.seed,
         {
@@ -97,7 +97,6 @@ export default class WalletManagerRgb extends WalletManager {
    */
   async restoreAccountFromBackup (restoreConfig = {}) {
     const index = 0
-    const { default: WalletAccountRgb } = await import('./wallet-account-rgb.js')
 
     await this._initializeKeys()
 

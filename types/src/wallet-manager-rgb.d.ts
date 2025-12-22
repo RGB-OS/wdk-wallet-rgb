@@ -36,7 +36,7 @@ export default class WalletManagerRgb extends WalletManager {
      * @param {RgbRestoreConfig} restoreConfig - Restore configuration containing backup details.
      * @returns {Promise<WalletAccountRgb>} The restored account.
      */
-    restoreAccountFromBackup(restoreConfig?: RgbRestoreConfig): Promise<typeof import("./wallet-account-rgb.js").default>;
+    restoreAccountFromBackup(restoreConfig?: RgbRestoreConfig): Promise<WalletAccountRgb>;
     /**
      * Returns the wallet account at a specific BIP-44 derivation path.
      *
@@ -50,3 +50,4 @@ export type RgbWalletConfig = import("./wallet-account-read-only-rgb.js").RgbWal
 export type RgbRestoreConfig = import("./wallet-account-rgb.js").RgbRestoreConfig;
 export type GeneratedKeys = import("rgb-sdk").GeneratedKeys;
 import WalletManager from '@tetherto/wdk-wallet';
+import WalletAccountRgb from './wallet-account-rgb.js';

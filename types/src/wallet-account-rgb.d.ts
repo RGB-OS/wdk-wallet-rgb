@@ -3,11 +3,19 @@
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
 /** @typedef {import('./wallet-account-read-only-rgb.js').TransferOptions} TransferOptions */
-/** @typedef {import('../index.js').RgbTransactionReceipt} RgbTransactionReceipt */
-/** @typedef {import('../index.js').RgbTransferReceipt} RgbTransferReceipt */
+/** @typedef {import('rgb-sdk').Transaction} RgbTransactionReceipt */
+/** @typedef {import('rgb-sdk').RgbTransfer} RgbTransferReceipt */
 /** @typedef {import('rgb-sdk').IssueAssetNIAResponse} IssueAssetNIA */
 /** @typedef {import('rgb-sdk').ListAssetsResponse} ListAssets */
 /** @typedef {import('rgb-sdk').InvoiceReceiveData} InvoiceReceiveData */
+/** @typedef {import('rgb-sdk').BtcBalance} BtcBalance */
+/**
+ * Result returned by registerWallet method.
+ *
+ * @typedef {Object} RegisterWalletResult
+ * @property {string} address - The wallet's Bitcoin address.
+ * @property {BtcBalance} btc_balance - The wallet's Bitcoin balance.
+ */
 /** @typedef {import('rgb-sdk').SendAssetEndRequestModel} SendAssetEndRequest */
 /** @typedef {import('rgb-sdk').SendResult} SendResult */
 /** @typedef {import('rgb-sdk').Unspent} Unspent */
@@ -15,10 +23,11 @@
 /** @typedef {import('./wallet-account-read-only-rgb.js').RgbWalletConfig} RgbWalletConfig */
 /**
  * @typedef {Object} RgbKeyPair
- * @extends {KeyPair}
- * @property {string} [accountXpubVanilla] - The vanilla extended public key.
- * @property {string} [accountXpubColored] - The colored extended public key.
- * @property {string} [masterFingerprint] - The master fingerprint.
+ * @property {Uint8Array} publicKey - The public key.
+ * @property {Uint8Array | null} privateKey - The private key (null if the account has been disposed).
+ * @property {Uint8Array} [accountXpubVanilla] - The vanilla extended public key.
+ * @property {Uint8Array} [accountXpubColored] - The colored extended public key.
+ * @property {Uint8Array} [masterFingerprint] - The master fingerprint.
  */
 /**
  * @typedef {Object} RgbRestoreParams
@@ -31,9 +40,6 @@
  */
 /**
  * @typedef {RgbWalletConfig & RgbRestoreParams} RgbRestoreConfig
- */
-/**
- * @typedef {RgbRestoreParams} RgbRestoreFromBackupParams
  */
 /** @implements {IWalletAccount} */
 export default class WalletAccountRgb extends WalletAccountReadOnlyRgb implements IWalletAccount {
@@ -304,10 +310,10 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb implement
     /**
      * Restores a wallet from a backup file.
      *
-     * @param {RgbRestoreFromBackupParams} params - Restore options.
+     * @param {RgbRestoreParams} params - Restore options.
      * @returns {Promise<{message: string}>} The restore response from rgb-sdk.
      */
-    restoreFromBackup(params: RgbRestoreFromBackupParams): Promise<{
+    restoreFromBackup(params: RgbRestoreParams): Promise<{
         message: string;
     }>;
     /**
@@ -318,10 +324,11 @@ export default class WalletAccountRgb extends WalletAccountReadOnlyRgb implement
     refreshWallet(): Promise<void>;
     /**
      * Registers the wallet with the RGB node.
+     * Returns the wallet's address and current Bitcoin balance.
      *
-     * @returns {Promise<void>}
+     * @returns {Promise<RegisterWalletResult>} The registration result containing the wallet address and BTC balance.
      */
-    registerWallet(): Promise<void>;
+    registerWallet(): Promise<RegisterWalletResult>;
     /**
      * Syncs RGB wallet state with Bitcoin blockchain.
      *
@@ -334,17 +341,52 @@ export type KeyPair = import("@tetherto/wdk-wallet").KeyPair;
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type TransferOptions = import("./wallet-account-read-only-rgb.js").TransferOptions;
-export type RgbTransactionReceipt = import("../index.js").RgbTransactionReceipt;
-export type RgbTransferReceipt = import("../index.js").RgbTransferReceipt;
+export type RgbTransactionReceipt = import("rgb-sdk").Transaction;
+export type RgbTransferReceipt = import("rgb-sdk").RgbTransfer;
 export type IssueAssetNIA = import("rgb-sdk").IssueAssetNIAResponse;
 export type ListAssets = import("rgb-sdk").ListAssetsResponse;
 export type InvoiceReceiveData = import("rgb-sdk").InvoiceReceiveData;
+export type BtcBalance = import("rgb-sdk").BtcBalance;
+/**
+ * Result returned by registerWallet method.
+ */
+export type RegisterWalletResult = {
+    /**
+     * - The wallet's Bitcoin address.
+     */
+    address: string;
+    /**
+     * - The wallet's Bitcoin balance.
+     */
+    btc_balance: BtcBalance;
+};
 export type SendAssetEndRequest = import("rgb-sdk").SendAssetEndRequestModel;
 export type SendResult = import("rgb-sdk").SendResult;
 export type Unspent = import("rgb-sdk").Unspent;
 export type RgbTransaction = import("./wallet-account-read-only-rgb.js").RgbTransaction;
 export type RgbWalletConfig = import("./wallet-account-read-only-rgb.js").RgbWalletConfig;
-export type RgbKeyPair = any;
+export type RgbKeyPair = {
+    /**
+     * - The public key.
+     */
+    publicKey: Uint8Array;
+    /**
+     * - The private key (null if the account has been disposed).
+     */
+    privateKey: Uint8Array | null;
+    /**
+     * - The vanilla extended public key.
+     */
+    accountXpubVanilla?: Uint8Array;
+    /**
+     * - The colored extended public key.
+     */
+    accountXpubColored?: Uint8Array;
+    /**
+     * - The master fingerprint.
+     */
+    masterFingerprint?: Uint8Array;
+};
 export type RgbRestoreParams = {
     /**
      * - The backup file data.
@@ -372,6 +414,5 @@ export type RgbRestoreParams = {
     masterFingerprint?: string;
 };
 export type RgbRestoreConfig = RgbWalletConfig & RgbRestoreParams;
-export type RgbRestoreFromBackupParams = RgbRestoreParams;
 import WalletAccountReadOnlyRgb from './wallet-account-read-only-rgb.js';
-import { WalletManager } from './libs/rgb-sdk.js';
+import { WalletManager } from 'rgb-sdk';

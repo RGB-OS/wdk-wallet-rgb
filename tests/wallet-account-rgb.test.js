@@ -59,7 +59,7 @@ let WalletAccountRgb
 let WalletManagerMock
 
 beforeAll(async () => {
-  jest.unstable_mockModule('../src/libs/rgb-sdk.js', () => {
+  jest.unstable_mockModule('rgb-sdk', () => {
     WalletManagerMock = jest.fn().mockImplementation(() => createMockWallet())
 
     return {

@@ -1,31 +1,17 @@
-// Copyright 2024 Tether Operations Limited
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 'use strict'
 
 import { WalletAccountReadOnly } from '@tetherto/wdk-wallet'
-import { WalletManager } from './libs/rgb-sdk.js'
+import { WalletManager } from 'rgb-sdk'
 
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
-/** @typedef {import('../index.js').RgbTransactionReceipt} RgbTransactionReceipt */
-/** @typedef {import('../index.js').RgbTransferReceipt} RgbTransferReceipt */
+/** @typedef {import('rgb-sdk').Transaction} RgbTransactionReceipt */
+/** @typedef {import('rgb-sdk').RgbTransfer} RgbTransferReceipt */
 /** @typedef {import('rgb-sdk').GeneratedKeys} Keys */
 
 /**
  * @typedef {Object} WitnessData
- * @property {number} [amountSat] - The amount in satoshis.
+ * @property {number | bigint} [amountSat] - The amount in satoshis.
  * @property {number} [blinding] - The blinding factor.
  */
 
@@ -114,7 +100,7 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
   /**
    * Quotes the costs of a send transaction operation.
    *
-   * @param {RgbTransaction} tx - The transaction.
+   * @param {Omit<RgbTransaction, 'feeRate'>} tx - The transaction.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    */
   async quoteSendTransaction (tx) {
