@@ -10,7 +10,8 @@ const mockKeys = {
 }
 
 // Mock rgb-sdk before importing anything that uses it
-jest.unstable_mockModule('rgb-sdk', () => {
+// Use doMock to avoid module resolution issues in CI
+jest.doMock('rgb-sdk', () => {
   const mockWalletManagerInstance = {
     getBtcBalance: jest.fn().mockResolvedValue({ vanilla: { settled: 1000000 } }),
     getAssetBalance: jest.fn().mockResolvedValue({ settled: 500000 }),
