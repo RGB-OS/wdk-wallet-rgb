@@ -8,7 +8,7 @@ const mockKeys = {
   account_xpub_colored: 'tpubDDPLJfdVbDoGtnn6hSto3oCnm6hpfHe9uk2MxcANanxk87EuquhSVfSLQv7e5UykgzaFn41DUXaikjjVGcUSUTGNaJ9LcozfRwatKp1vTfC',
   master_fingerprint: 'a66bffef',
 };
-// Mock rgb-sdk before importing anything that uses it
+
 jest.unstable_mockModule('rgb-sdk', () => {
 
 

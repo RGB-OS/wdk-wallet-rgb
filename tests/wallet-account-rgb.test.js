@@ -1,5 +1,78 @@
 import { beforeAll, beforeEach, describe, expect, jest, test } from '@jest/globals'
 
+let WalletManagerMock
+
+jest.unstable_mockModule('rgb-sdk', () => {
+  const createMockWallet = () => ({
+    registerWallet: jest.fn().mockResolvedValue(undefined),
+    getAddress: jest.fn().mockResolvedValue('bc1p-test-address'),
+    getBtcBalance: jest.fn().mockResolvedValue({ vanilla: { settled: 1500000 } }),
+    getAssetBalance: jest.fn().mockResolvedValue({ settled: 750000 }),
+    dispose: jest.fn(),
+    listAssets: jest.fn().mockResolvedValue({
+      nia: [{ asset_id: 'asset-1' }],
+      uda: null,
+      cfa: null
+    }),
+    listTransfers: jest.fn().mockResolvedValue([{ txid: 'tx-1', direction: 'incoming' }]),
+    sendBegin: jest.fn().mockResolvedValue('psbt-bytes'),
+    signPsbt: jest.fn().mockImplementation(psbt => `signed:${psbt}`),
+    sendEnd: jest.fn().mockResolvedValue({ txid: 'abc123', fee: 210 }),
+    estimateFeeRate: jest.fn().mockResolvedValue(1),
+    estimateFee: jest.fn().mockResolvedValue({ fee: 210 }),
+    send: jest.fn().mockResolvedValue({ txid: 'abc123', fee: 210 }),
+    signMessage: jest.fn().mockResolvedValue('signed-message'),
+    verifyMessage: jest.fn().mockResolvedValue(true),
+    blindReceive: jest.fn().mockResolvedValue({ invoice: 'rgb1-invoice' }),
+    witnessReceive: jest.fn().mockResolvedValue({ invoice: 'rgb1-witness' }),
+    issueAssetNia: jest.fn().mockResolvedValue({
+      asset: {
+        asset_id: 'rgb:2dkSTbr-jFhznbPmo-TQafzswCN-av4gTsJjX-ttx6CNou5-M98k8Zd',
+        assetIface: 'RGB20',
+        ticker: 'RGB',
+        name: 'RGB Asset',
+        precision: 0,
+        issued_supply: 100,
+        timestamp: 1691160565,
+        added_at: 1691161979
+      }
+    }),
+    createUtxosBegin: jest.fn().mockResolvedValue('psbt-utxo'),
+    createUtxosEnd: jest.fn().mockResolvedValue(2),
+    listUnspents: jest.fn().mockResolvedValue([{ txid: 'utxo-1' }]),
+    listTransactions: jest.fn().mockResolvedValue([{ txid: 'tx-1' }]),
+    refreshWallet: jest.fn().mockResolvedValue(undefined),
+    createBackup: jest.fn().mockResolvedValue({
+      message: 'Backup created successfully',
+      download_url: '/wallet/backup/tpubDDMTD6EJKKLP6Gx9JUnMpjf9NYyePJszmqBnNqULNmcgEuU1yQ3JsHhWZdRFecszWETnNsmhEe9vnaNibfzZkDDHycbR2rGFbXdHWRgBfu7'
+    }),
+    downloadBackup: jest.fn().mockResolvedValue(Buffer.from('backup')),
+    restoreFromBackup: jest.fn().mockResolvedValue({ message: 'Wallet restored successfully' })
+  })
+
+  WalletManagerMock = jest.fn().mockImplementation(() => createMockWallet())
+
+  return {
+    WalletManager: WalletManagerMock,
+    deriveKeysFromMnemonic: jest.fn(),
+    deriveKeysFromSeed: jest.fn().mockResolvedValue({
+      mnemonic: 'test mnemonic',
+      xpub: 'tpubD6NzVbkrYhZ4Wsc3NdduD3aW4k8LFd9VFkZnRUtcBtvfDmiydwioba8PWFrJRBQrSSHzfvR8Gz8sGvqV3vm5wEmgT1dcWDAaz2xRKRPaBok',
+      xpriv: 'tprv8ZgxMBicQKsPdQaFUyyJodvPVicQ6HxagSy18xrJmd8GPHUD1YuDR5WXL9eUDiNnLfkufjL2EwzWpnkiyck5da731zevC4t34QyR69uTSSX',
+      account_xpub_vanilla: 'tpubDDMTD6EJKKLP6Gx9JUnMpjf9NYyePJszmqBnNqULNmcgEuU1yQ3JsHhWZdRFecszWETnNsmhEe9vnaNibfzZkDDHycbR2rGFbXdHWRgBfu7',
+      account_xpub_colored: 'tpubDDPLJfdVbDoGtnn6hSto3oCnm6hpfHe9uk2MxcANanxk87EuquhSVfSLQv7e5UykgzaFn41DUXaikjjVGcUSUTGNaJ9LcozfRwatKp1vTfC',
+      master_fingerprint: 'a66bffef'
+    }),
+    createWallet: jest.fn().mockResolvedValue({}),
+    BIP32_VERSIONS: {
+      mainnet: { public: 76067358, private: 76066276 },
+      testnet: { public: 70617039, private: 70615956 },
+      signet: { public: 70617039, private: 70615956 },
+      regtest: { public: 70617039, private: 70615956 }
+    }
+  }
+})
+
 const SEED_PHRASE = 'cook voyage document eight skate token alien guide drink uncle term abuse'
 
 const mockKeysBase = {
@@ -59,26 +132,8 @@ const createMockWallet = () => ({
 })
 
 let WalletAccountRgb
-let WalletManagerMock
 
 beforeAll(async () => {
-  jest.unstable_mockModule('rgb-sdk', () => {
-    WalletManagerMock = jest.fn().mockImplementation(() => createMockWallet())
-
-    return {
-      WalletManager: WalletManagerMock,
-      deriveKeysFromMnemonic: jest.fn(),
-      deriveKeysFromSeed: jest.fn(),
-      createWallet: jest.fn(),
-      BIP32_VERSIONS: {
-        mainnet: { public: 76067358, private: 76066276 },
-        testnet: { public: 70617039, private: 70615956 },
-        signet: { public: 70617039, private: 70615956 },
-        regtest: { public: 70617039, private: 70615956 }
-      }
-    }
-  })
-
   const module = await import('../index.js')
   WalletAccountRgb = module.WalletAccountRgb
 })
