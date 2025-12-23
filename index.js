@@ -1,4 +1,4 @@
-// Copyright 2024 Tether Operations Limited
+// Copyright 2025 UTEXO
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 'use strict'
-
+/** @typedef {import('rgb-sdk').Transaction} RgbTransactionReceipt */
+/** @typedef {import('rgb-sdk').RgbTransfer} RgbTransferReceipt */
 /** @typedef {import('@tetherto/wdk-wallet').FeeRates} FeeRates */
 /** @typedef {import('@tetherto/wdk-wallet').KeyPair} KeyPair */
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */

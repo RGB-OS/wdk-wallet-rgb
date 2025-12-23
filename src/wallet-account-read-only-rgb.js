@@ -1,4 +1,4 @@
-// Copyright 2024 Tether Operations Limited
+// Copyright 2025 RGB OS Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,28 +11,46 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 'use strict'
 
 import { WalletAccountReadOnly } from '@tetherto/wdk-wallet'
-import { WalletManager } from './libs/rgb-sdk.js'
+import { WalletManager } from 'rgb-sdk'
 
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
-/** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
-/** @typedef {import('rgb-sdk').Transaction} Transaction */
+/** @typedef {import('rgb-sdk').Transaction} RgbTransactionReceipt */
+/** @typedef {import('rgb-sdk').RgbTransfer} RgbTransferReceipt */
+/** @typedef {import('rgb-sdk').GeneratedKeys} Keys */
+
+/**
+ * @typedef {Object} WitnessData
+ * @property {number | bigint} [amountSat] - The amount in satoshis.
+ * @property {number} [blinding] - The blinding factor.
+ */
+
+/**
+ * @typedef {Object} TransferOptions
+ * @property {string} token - The RGB asset ID to transfer.
+ * @property {string} recipient - The recipient's invoice (from blindReceive).
+ * @property {number | bigint} amount - The amount to transfer.
+ * @property {number} [feeRate] - The fee rate in sat/vbyte (default: 1).
+ * @property {number} [minConfirmations] - Minimum confirmations (default: 1).
+ * @property {WitnessData} [witnessData] - The witness data.
+ */
 
 /**
  * @typedef {Object} RgbTransaction
  * @property {string} to - The transaction's recipient.
- * @property {number} value - The amount of bitcoins to send to the recipient (in satoshis).
+ * @property {number | bigint} value - The amount of bitcoins to send to the recipient (in satoshis).
+ * @property {number} [feeRate] - Fee rate in sat/vbyte (default: 1).
  */
 
 /**
  * @typedef {Object} RgbWalletConfig
- * @property {string} [network] - The network (default: "regtest").
- * @property {string} [rgb_node_endpoint] - The RGB node endpoint (default: "http://127.0.0.1:8000").
- * @property {Object} [keys] - The wallet keys from rgb-sdk.
+ * @property {'mainnet' | 'testnet' | 'regtest'} [network] - The network (default: "regtest").
+ * @property {string} [rgbNodeEndpoint] - The RGB node endpoint (default: "https://rgb-node.test.thunderstack.org").
+ * @property {Keys} [keys] - The wallet keys from rgb-sdk.
+ * @property {number | bigint} [transferMaxFee] - The maximum fee amount for transfer operations.
  */
 
 export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
@@ -52,18 +70,6 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
      * @type {RgbWalletConfig}
      */
     this._config = config
-    /** @private */
-    this._wallet = null
-  }
-
-  /**
-   * Initializes the RGB wallet manager for read-only operations
-   * @private
-   */
-  async _initializeWallet () {
-    if (this._wallet) {
-      return this._wallet
-    }
 
     if (!this._config.keys) {
       throw new Error('Wallet keys are required for read-only account')
@@ -71,8 +77,9 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
 
     const { keys } = this._config
     const network = this._config.network || 'testnet'
-    const rgbNodeEndpoint = this._config.rgb_node_endpoint || 'https://rgb-node.test.thunderstack.org'
+    const rgbNodeEndpoint = this._config.rgbNodeEndpoint || 'https://rgb-node.test.thunderstack.org'
 
+    /** @private */
     this._wallet = new WalletManager({
       xpub_van: keys.account_xpub_vanilla,
       xpub_col: keys.account_xpub_colored,
@@ -80,8 +87,6 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
       network,
       rgb_node_endpoint: rgbNodeEndpoint
     })
-
-    return this._wallet
   }
 
   /**
@@ -90,7 +95,6 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
    * @returns {Promise<bigint>} The bitcoin balance (in satoshis).
    */
   async getBalance () {
-    await this._initializeWallet()
     const balance = await this._wallet.getBtcBalance()
     return BigInt(balance.vanilla.settled || 0)
   }
@@ -102,24 +106,21 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
    * @returns {Promise<bigint>} The token balance (in base unit).
    */
   async getTokenBalance (tokenAddress) {
-    await this._initializeWallet()
     const balance = await this._wallet.getAssetBalance(tokenAddress)
-    return BigInt(balance || 0)
+    return BigInt(balance.settled || 0)
   }
 
   /**
    * Quotes the costs of a send transaction operation.
    *
-   * @param {Transaction} options - The transaction.
-   * @param {string} options.to - The transaction's recipient.
-   * @param {number} options.value - The amount of bitcoins to send to the recipient (in satoshis).
+   * @param {Omit<RgbTransaction, 'feeRate'>} tx - The transaction.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    */
-  async quoteSendTransaction (options) {
+  async quoteSendTransaction (tx) {
     const feeRate = await this._wallet.estimateFeeRate(1)
     const psbt = await this._wallet.sendBtcBegin({
-      address: options.to,
-      amount: options.value,
+      address: tx.to,
+      amount: tx.value,
       fee_rate: Math.round(feeRate)
     })
     const signedPsbt = await this._wallet.signPsbt(psbt)
@@ -131,24 +132,23 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
    * Quotes the costs of a transfer operation.
    *
    * @param {TransferOptions} options - The transfer's options.
-   * @property {string} options.asset_id - The RGB asset ID to transfer.
-   * @property {string} options.to - The recipient's invoice (from blindReceive).
-   * @property {number} options.value - The amount to transfer.
-   * @property {Object} [options.witness_data] - The witness data.
-   * @property {number} [options.fee_rate] - The fee rate in sat/vbyte (default: 1).
-   * @property {number} [options.min_confirmations] - Minimum confirmations (default: 1).
    * @returns {Promise<Omit<TransferResult, 'hash'>>} The transfer's quotes.
-   *
    */
   async quoteTransfer (options) {
-    const feeRate = await this._wallet.estimateFeeRate(1)
+    const estimatedFeeRate = await this._wallet.estimateFeeRate(1)
+    const feeRate = options.feeRate || estimatedFeeRate
     const psbt = await this._wallet.sendBegin({
-      invoice: options.to,
-      asset_id: options.asset_id,
-      witness_data: options.witness_data,
-      amount: options.value,
+      invoice: options.recipient,
+      asset_id: options.token,
+      witness_data: options.witnessData
+        ? {
+            amount_sat: options.witnessData.amountSat,
+            blinding: options.witnessData.blinding
+          }
+        : undefined,
+      amount: options.amount,
       fee_rate: Math.round(feeRate),
-      min_confirmations: options.min_confirmations
+      min_confirmations: options.minConfirmations
     })
     const signedPsbt = await this._wallet.signPsbt(psbt)
     const { fee } = await this._wallet.estimateFee(signedPsbt)
@@ -159,7 +159,7 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
    * Returns a transaction's receipt.
    *
    * @param {string} hash - The transaction's hash.
-   * @returns {Promise<Transaction | null>} The receipt, or null if the transaction has not been created yet.
+   * @returns {Promise<RgbTransactionReceipt | null>} The receipt, or null if the transaction has not been created yet.
    */
   async getTransactionReceipt (hash) {
     const transactions = await this._wallet.listTransactions()
@@ -171,7 +171,7 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
    * Returns a transfer's receipt.
    *
    * @param {string} hash - The transfer's hash.
-   * @returns {Promise<RgbTransfer | null>} The receipt, or null if the transfer has not been created yet.
+   * @returns {Promise<RgbTransferReceipt | null>} The receipt, or null if the transfer has not been created yet.
    */
   async getTransferReceipt (hash) {
     const transfers = await this._wallet.listTransfers()

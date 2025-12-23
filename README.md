@@ -1,8 +1,8 @@
-# @tetherto/wdk-wallet-rgb
+# @utexo/wdk-wallet-rgb
 
 > **Beta notice:** this package is still evolving. Please exercise caution and validate behaviour against your RGB node before deploying in production.
 
-`@tetherto/wdk-wallet-rgb` bridges the Wallet Development Kit (WDK) interfaces with the RGB ecosystem by wrapping the official `rgb-sdk` WalletManager API inside the familiar WDK abstractions. It handles key-derivation, account lifecycle, UTXO orchestration, asset issuance, transfers, and wallet backup flows while keeping the WDK ergonomics you already know. The library expects an RGB node and Bitcoin backend to be available, just like the upstream `rgb-sdk` tooling.
+`@utexo/wdk-wallet-rgb` bridges the Wallet Development Kit (WDK) interfaces with the RGB ecosystem by wrapping the official `rgb-sdk` WalletManager API inside the familiar WDK abstractions. It handles key-derivation, account lifecycle, UTXO orchestration, asset issuance, transfers, and wallet backup flows while keeping the WDK ergonomics you already know. The library expects an RGB node and Bitcoin backend to be available, just like the upstream `rgb-sdk` tooling.
 
 [RGB SDK Overview – rgb-sdk](https://github.com/RGB-OS/rgb-sdk)
 
@@ -63,19 +63,19 @@ With this package you can:
 ## 📦 Installation
 
 ```bash
-npm install @tetherto/wdk-wallet-rgb
+npm install @utexo/wdk-wallet-rgb
 ```
 
-You also need access to an RGB node (default endpoint `http://127.0.0.1:8000`) and a Bitcoin backend that the node trusts. The examples assume a locally running regtest stack.
+You also need access to an RGB node (default endpoint `https://rgb-node.test.thunderstack.org`) and a Bitcoin backend that the node trusts. The examples assume a locally running regtest stack.
 
 ---
 
 ## 🚀 Quick Start
 
 ```javascript
-import WalletManagerRgb from '@tetherto/wdk-wallet-rgb'
+import WalletManagerRgb from '@utexo/wdk-wallet-rgb'
 
-const RGB_NODE_ENDPOINT = 'http://127.0.0.1:8000'
+const RGB_NODE_ENDPOINT = 'https://rgb-node.test.thunderstack.org'
 const NETWORK = 'regtest'
 
 const seedPhrase = 'poem twice question inch happy capital grain quality laptop dry chaos what';
@@ -83,7 +83,7 @@ const seedPhrase = 'poem twice question inch happy capital grain quality laptop 
 // Initialise the WDK manager – it will derive RGB keys on demand
 const manager = new WalletManagerRgb(seedPhrase, {
   network: 'mainnet', // 'mainnet', 'testnet', 'regtest'
-  rgb_node_endpoint: 'http://127.0.0.1:8000'
+  rgbNodeEndpoint: 'https://rgb-node.test.thunderstack.org'
 })
 
 const account = await manager.getAccount()
@@ -108,7 +108,7 @@ manager.dispose()
 ```javascript
 const manager = new WalletManagerRgb(mnemonic, {
   network: 'regtest',
-  rgb_node_endpoint: 'http://127.0.0.1:8000'
+  rgbNodeEndpoint: 'https://rgb-node.test.thunderstack.org'
 })
 const account = await manager.getAccount() // always index 0
 ```
@@ -163,7 +163,7 @@ const backupFile = await account.downloadBackup() // defaults to the wallet xpub
 
 const restoredManager = new WalletManagerRgb(mnemonic, {
   network: 'regtest',
-  rgb_node_endpoint: 'http://127.0.0.1:8000'
+  rgbNodeEndpoint: 'https://rgb-node.test.thunderstack.org'
 })
 
 const restored = await restoredManager.restoreAccountFromBackup({

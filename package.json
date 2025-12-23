@@ -1,6 +1,6 @@
 {
-  "name": "@tetherto/wdk-wallet-rgb",
-  "version": "1.0.0-beta.1",
+  "name": "@utexo/wdk-wallet-rgb",
+  "version": "1.0.1",
   "description": "A simple package to manage wallets for RGB.",
   "keywords": [
     "wdk",
@@ -8,17 +8,17 @@
     "bip-32",
     "rgb"
   ],
-  "author": "Tether",
+  "author": "UTEXO",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git://github.com/tetherto/wdk-wallet-spark.git"
+    "url": "git://github.com//RGB-OS/wdk-wallet-rgb.git"
   },
   "main": "index.js",
   "type": "module",
   "types": "./types",
   "scripts": {
-    "build:types": "rimraf *.d.ts **/*.d.ts; tsc",
+    "build:types": "tsc",
     "lint": "standard --env jest",
     "lint:fix": "standard --fix --env jest",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
@@ -29,12 +29,12 @@
     "@tetherto/wdk-wallet": "^1.0.0-beta.1",
     "bare-node-runtime": "1.1.4",
     "bip39": "3.1.0",
-    "rgb-sdk": "1.2.4"
+    "rgb-sdk": "1.2.7",
+    "sodium-universal": "5.0.1"
   },
   "devDependencies": {
     "cross-env": "7.0.3",
     "jest": "29.7.0",
-    "rimraf": "6.0.1",
     "standard": "17.1.2",
     "typescript": "5.8.3"
   },

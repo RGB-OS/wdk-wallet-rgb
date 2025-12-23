@@ -9,7 +9,7 @@ const mockKeys = {
   master_fingerprint: 'a66bffef',
 };
 // Mock rgb-sdk before importing anything that uses it
-jest.unstable_mockModule('../src/libs/rgb-sdk.js', () => {
+jest.unstable_mockModule('rgb-sdk', () => {
 
 
   const mockWalletManagerInstance = {
@@ -49,7 +49,13 @@ jest.unstable_mockModule('../src/libs/rgb-sdk.js', () => {
     WalletManager: jest.fn().mockImplementation(() => mockWalletManagerInstance),
     deriveKeysFromMnemonic: jest.fn().mockResolvedValue(mockKeys),
     deriveKeysFromSeed: deriveKeysFromSeedMock,
-    createWallet: jest.fn().mockResolvedValue({})
+    createWallet: jest.fn().mockResolvedValue({}),
+    BIP32_VERSIONS: {
+      mainnet: { public: 76067358, private: 76066276 },
+      testnet: { public: 70617039, private: 70615956 },
+      signet: { public: 70617039, private: 70615956 },
+      regtest: { public: 70617039, private: 70615956 }
+    }
   }
 })
 
@@ -62,7 +68,7 @@ describe('WalletManagerRgb', () => {
   beforeEach(() => {
     wallet = new WalletManagerRgb(SEED_PHRASE, {
       network: 'regtest',
-      rgb_node_endpoint: 'http://127.0.0.1:8000'
+      rgbNodeEndpoint: 'http://127.0.0.1:8000'
     })
   })
 
@@ -133,13 +139,89 @@ describe('WalletManagerRgb', () => {
         filename: 'wallet.rgb',
         keys: mockKeys,
         network: 'regtest',
-        rgb_node_endpoint: 'http://127.0.0.1:8000'
+        rgbNodeEndpoint: 'http://127.0.0.1:8000'
       }))
       expect(result).toBe(restoredAccount)
 
       wallet._accounts = []
       fromBackupSpy.mockRestore()
     })
+
+    test('throws error when restore fails due to network error (node down)', async () => {
+      const backupData = Buffer.from('backup-data')
+      const networkError = new Error('Network error: connect ECONNREFUSED 127.0.0.1:8000')
+      networkError.name = 'NetworkError'
+      networkError.code = 'ECONNREFUSED'
+
+      const fromBackupSpy = jest.spyOn(WalletAccountRgb, 'fromBackup').mockRejectedValue(networkError)
+
+      await expect(wallet.restoreAccountFromBackup({
+        backup: backupData,
+        password: 'secure-password',
+        filename: 'wallet.rgb',
+        keys: mockKeys
+      })).rejects.toThrow('Network error: connect ECONNREFUSED 127.0.0.1:8000')
+
+      expect(fromBackupSpy).toHaveBeenCalled()
+      fromBackupSpy.mockRestore()
+    })
+
+    test('throws error when restore fails due to invalid backup', async () => {
+      const backupData = Buffer.from('invalid-backup-data')
+      const backupError = new Error('Failed to restore wallet: WrongPassword')
+      backupError.name = '_BadRequestError'
+      backupError.code = 'BAD_REQUEST'
+      backupError.statusCode = 400
+      const axiosError = new Error('Request failed with status code 400')
+      axiosError.code = 'ERR_BAD_REQUEST'
+      axiosError.response = {
+        status: 400,
+        statusText: 'Bad Request',
+        data: { detail: 'Failed to restore wallet: WrongPassword' }
+      }
+      backupError.cause = axiosError
+
+      const fromBackupSpy = jest.spyOn(WalletAccountRgb, 'fromBackup').mockRejectedValue(backupError)
+
+      await expect(wallet.restoreAccountFromBackup({
+        backup: backupData,
+        password: 'wrong-password',
+        filename: 'wallet.rgb',
+        keys: mockKeys
+      })).rejects.toThrow('Failed to restore wallet: WrongPassword')
+
+      expect(fromBackupSpy).toHaveBeenCalled()
+      fromBackupSpy.mockRestore()
+    })
+
+    test('throws error when restore fails due to missing required fields', async () => {
+      const fromBackupSpy = jest.spyOn(WalletAccountRgb, 'fromBackup').mockRejectedValue(
+        new Error('Backup file is required')
+      )
+
+      await expect(wallet.restoreAccountFromBackup({
+        password: 'secure-password',
+        filename: 'wallet.rgb',
+        keys: mockKeys
+      })).rejects.toThrow('Backup file is required')
+
+      expect(fromBackupSpy).toHaveBeenCalled()
+      fromBackupSpy.mockRestore()
+    })
+  })
+
+  describe('getAccount', () => {
+    test('throws error when account creation fails due to network error (node down)', async () => {
+      const networkError = new Error('Network error: connect ECONNREFUSED 127.0.0.1:8000')
+      networkError.name = 'NetworkError'
+      networkError.code = 'ECONNREFUSED'
+
+      const fromBackupSpy = jest.spyOn(WalletAccountRgb, 'at').mockRejectedValue(networkError)
+
+      await expect(wallet.getAccount()).rejects.toThrow('Network error: connect ECONNREFUSED 127.0.0.1:8000')
+
+      expect(fromBackupSpy).toHaveBeenCalled()
+      fromBackupSpy.mockRestore()
+    })
   })
 })
-
