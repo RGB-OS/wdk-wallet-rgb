@@ -73,8 +73,8 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
 
     if (!this._config.keys) {
       throw new Error('Wallet keys are required for read-only account')
-    } 
-    
+    }
+
     if (!this._config.network) {
       throw new Error('Network configuration is required.')
     }
@@ -84,7 +84,7 @@ export default class WalletAccountReadOnlyRgb extends WalletAccountReadOnly {
     }
 
     const { keys } = this._config
-    
+
     const network = this._config.network
     const rgbNodeEndpoint = this._config.rgbNodeEndpoint
 

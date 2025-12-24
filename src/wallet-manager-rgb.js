@@ -41,7 +41,7 @@ export default class WalletManagerRgb extends WalletManager {
     if (!config.rgbNodeEndpoint) {
       throw new Error('rgbNodeEndpoint configuration is required.')
     }
-    
+
     /** @private */
     this._network = config.network
     /** @private */
