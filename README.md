@@ -22,6 +22,15 @@ With this package you can:
 
 ## ⚙️ Capabilities
 
+### RGB Node Endpoints
+
+When initializing `WalletManagerRgb` or creating accounts, you must provide an `rgbNodeEndpoint` configuration. The following endpoints are recommended:
+
+- **Testnet**: `https://rgb-node.test.thunderstack.org`
+- **Mainnet**: `https://rgb-node.thunderstack.org`
+
+Both `network` and `rgbNodeEndpoint` are required configuration parameters. See the examples below for usage.
+
 ### `WalletManagerRgb`
 
 | Method | Description |
@@ -66,15 +75,6 @@ npm install @utexo/wdk-wallet-rgb
 ```
 
 You also need access to an RGB node and a Bitcoin backend that the node trusts. The examples assume a locally running regtest stack.
-
-### RGB Node Endpoints
-
-When initializing `WalletManagerRgb` or creating accounts, you must provide an `rgbNodeEndpoint` configuration. The following endpoints are recommended:
-
-- **Testnet**: `https://rgb-node.test.thunderstack.org`
-- **Mainnet**: `https://rgb-node.thunderstack.org`
-
-Both `network` and `rgbNodeEndpoint` are required configuration parameters. See the examples below for usage.
 
 ---
 
